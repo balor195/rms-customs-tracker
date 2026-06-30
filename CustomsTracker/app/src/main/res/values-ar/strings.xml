@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">متتبع التخليص الجمركي — الخدمات الطبية الملكية</string>
+
+    <!-- General -->
+    <string name="save">حفظ</string>
+    <string name="cancel">إلغاء</string>
+    <string name="confirm">تأكيد</string>
+    <string name="delete">حذف</string>
+    <string name="edit">تعديل</string>
+    <string name="close">إغلاق</string>
+    <string name="back">رجوع</string>
+    <string name="loading">جارٍ التحميل…</string>
+    <string name="error_generic">حدث خطأ. يُرجى المحاولة مجدداً.</string>
+    <string name="yes">نعم</string>
+    <string name="no">لا</string>
+
+    <!-- Auth -->
+    <string name="login_title">تسجيل الدخول</string>
+    <string name="login_username">اسم المستخدم</string>
+    <string name="login_password">كلمة المرور</string>
+    <string name="login_button">دخول</string>
+    <string name="login_error_invalid">اسم المستخدم أو كلمة المرور غير صحيحة</string>
+    <string name="logout">تسجيل الخروج</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_title">لوحة التحكم</string>
+    <string name="dashboard_active">نشطة</string>
+    <string name="dashboard_delayed">متأخرة</string>
+    <string name="dashboard_closed">مغلقة</string>
+    <string name="dashboard_overdue">تجاوزت SLA</string>
+
+    <!-- Transactions -->
+    <string name="transaction_list_title">المعاملات</string>
+    <string name="transaction_new">معاملة جديدة</string>
+    <string name="transaction_ref">رقم المعاملة</string>
+    <string name="transaction_title_label">الوصف</string>
+    <string name="transaction_supplier">المورد</string>
+    <string name="transaction_value">القيمة الإجمالية (دينار)</string>
+    <string name="transaction_status">الحالة</string>
+    <string name="transaction_phase">المرحلة</string>
+    <string name="transaction_priority">الأولوية</string>
+    <string name="transaction_created">تاريخ الإنشاء</string>
+    <string name="transaction_updated">آخر تحديث</string>
+    <string name="transaction_notes">ملاحظات</string>
+
+    <!-- Phase tracking -->
+    <string name="phase_records_title">متابعة المراحل</string>
+    <string name="phase_military">القيادة العامة للقوات المسلحة</string>
+    <string name="phase_customs">الجمارك الأردنية</string>
+    <string name="phase_jfda">هيئة الغذاء والدواء الأردنية</string>
+    <string name="phase_hard_gate_notice">يُشترط اكتمال مصادقات الجهات الثلاث قبل إصدار أمر الإفراج</string>
+    <string name="phase_overdue_notice">تجاوز %1$d يوم(أيام) عن المدة المحددة</string>
+
+    <!-- Documents -->
+    <string name="documents_title">الوثائق</string>
+    <string name="document_upload">رفع وثيقة</string>
+    <string name="document_type">نوع الوثيقة</string>
+    <string name="document_verified">موثقة</string>
+
+    <!-- Notifications -->
+    <string name="notifications_title">الإشعارات</string>
+    <string name="notifications_mark_all_read">تحديد الكل كمقروء</string>
+    <string name="notification_sla_breach">تجاوز المدة الزمنية المحددة</string>
+    <string name="notification_sla_escalated">تصعيد — تجاوز حرج</string>
+    <string name="notifications_empty">لا توجد إشعارات</string>
+    <string name="notifications_filter_all">الكل</string>
+    <string name="notifications_filter_unread">غير مقروء</string>
+    <string name="notifications_filter_sla">تجاوز SLA</string>
+
+    <!-- Reports -->
+    <string name="reports_title">التقارير</string>
+    <string name="report_weekly">التقرير الأسبوعي التشغيلي</string>
+    <string name="report_monthly">التقرير الشهري التحليلي</string>
+    <string name="report_executive">التقرير التنفيذي</string>
+    <string name="report_by_officer">تقرير حسب الضابط المسؤول</string>
+    <string name="report_by_officer_desc">توزيع المعاملات والقيم على الضباط المكلفين</string>
+    <string name="report_expected_shipments">الشحنات المتوقعة الوصول</string>
+    <string name="report_expected_shipments_desc">قائمة الشحنات المنتظرة مرتبةً بتاريخ الوصول</string>
+    <string name="report_value_by_division">القيمة حسب الشعبة الطبية</string>
+    <string name="report_value_by_division_desc">إجمالي قيمة العطاءات مصنفةً بحسب الشعبة</string>
+    <string name="export_pdf">تصدير PDF</string>
+    <string name="export_csv">تصدير CSV</string>
+    <string name="report_generating">جارٍ إنشاء التقرير…</string>
+    <string name="report_share">مشاركة التقرير</string>
+
+    <!-- Dashboard — new sections (Phase G) -->
+    <string name="dashboard_shipment_status">حالة الشحنات</string>
+    <string name="dashboard_shipment_expected">متوقع وصولها</string>
+    <string name="dashboard_shipment_arrived">وصلت</string>
+    <string name="dashboard_shipment_cleared">تم التخليص</string>
+    <string name="dashboard_upcoming_arrivals">%1$d شحنة متوقع وصولها خلال 7 أيام القادمة</string>
+    <string name="dashboard_value_by_division">القيمة حسب الشعبة الطبية</string>
+    <string name="dashboard_no_overdue">لا توجد معاملات متأخرة عن الجدول الزمني ✓</string>
+    <string name="dashboard_kpi_avg_total">متوسط وقت إنجاز المعاملة الكلي</string>
+    <string name="dashboard_kpi_avg_military">متوسط إنجاز القيادة العامة (4.1)</string>
+    <string name="dashboard_kpi_avg_customs">متوسط التخليص الجمركي (4.2)</string>
+    <string name="dashboard_kpi_delay_ratio">نسبة المعاملات المتأخرة</string>
+
+    <!-- Transaction fields — new (Phase A) -->
+    <string name="field_accreditation_number">رقم الاعتماد</string>
+    <string name="field_accreditation_number_hint">الرقم المرجعي للاعتماد من لجنة العطاءات المركزية</string>
+    <string name="field_responsible_officer">الضابط المسؤول</string>
+    <string name="field_responsible_officer_hint">الضابط المكلف بمتابعة هذه المعاملة</string>
+    <string name="field_division">الشعبة</string>
+    <string name="field_beneficiary">الجهة المستفيدة</string>
+    <string name="field_bill_of_lading">رقم بوليصة الشحن</string>
+    <string name="field_bill_of_lading_hint">Airway Bill / Bill of Lading</string>
+    <string name="field_expected_arrival">تاريخ الوصول المتوقع</string>
+    <string name="field_actual_arrival">تاريخ الوصول الفعلي</string>
+    <string name="field_shipment_status">حالة الشحنة</string>
+
+    <!-- Divisions (Department enum) -->
+    <string name="dept_pharmacy">شعبة الدواء</string>
+    <string name="dept_medical_consumables">شعبة المستهلكات الطبية</string>
+    <string name="dept_medical_devices">شعبة الأجهزة الطبية</string>
+
+    <!-- Beneficiary enum -->
+    <string name="beneficiary_rms">الخدمات الطبية الملكية</string>
+    <string name="beneficiary_bank">البنك</string>
+
+    <!-- Shipment status enum -->
+    <string name="shipment_status_expected">متوقع وصولها</string>
+    <string name="shipment_status_arrived">وصلت</string>
+    <string name="shipment_status_cleared">تم التخليص</string>
+
+    <!-- Shipment actions -->
+    <string name="action_mark_arrived">تسجيل وصول الشحنة</string>
+    <string name="action_mark_cleared">تأكيد اكتمال التخليص</string>
+    <string name="action_clearance_done">✓  تم التخليص النهائي</string>
+
+    <!-- Assigned entities — new (Phase A) -->
+    <string name="entity_health_ministry">وزارة الصحة</string>
+    <string name="entity_royal_jordanian">الملكية الأردنية / المطار العسكري</string>
+
+    <!-- Phase labels (Phase B — corrected official names) -->
+    <string name="phase_1_label">تحضير المناقصة وإصدارها</string>
+    <string name="phase_2_label">إحالة المناقصة وتوقيع العقد</string>
+    <string name="phase_3_label">تقديم طلب التخليص الجمركي</string>
+    <string name="phase_4_label">إجراءات الجهات الحكومية والعسكرية</string>
+    <string name="phase_5_label">الإفراج عن الشحنة</string>
+    <string name="phase_6_label">النقل والاستلام في المستودعات الطبية</string>
+    <string name="phase_7_label">إغلاق المعاملة والتسوية المالية</string>
+
+    <!-- Phase 4 — optional Ministry of Health track (Phase B) -->
+    <string name="phase_4_moh_optional_notice">هذا المسار اختياري ولا ينطبق افتراضياً على هذه المعاملة. إذا كانت المعاملة تتطلب موافقة وزارة الصحة، اضغط تفعيل لبدء المتابعة.</string>
+    <string name="action_activate_moh_track">تفعيل مسار وزارة الصحة</string>
+
+    <!-- Transaction list filters (Phase E) -->
+    <string name="filter_all_divisions">كل الشعب</string>
+    <string name="filter_all_beneficiaries">كل الجهات</string>
+    <string name="search_hint">بحث بالاعتماد، المورد، الضابط، البوليصة…</string>
+
+    <!-- Content descriptions (accessibility) -->
+    <string name="cd_edit_bill_of_lading">تعديل رقم بوليصة الشحن</string>
+    <string name="cd_select_date">اختر التاريخ</string>
+    <string name="cd_back">رجوع</string>
+    <string name="cd_create_transaction">إنشاء معاملة</string>
+
+    <!-- SLA Admin -->
+    <string name="sla_admin_title">إعدادات أهداف الوقت (SLA)</string>
+    <string name="sla_admin_subtitle">اضغط على أي مرحلة لتعديل هدفها الزمني</string>
+    <string name="sla_target_days">هدف الأيام</string>
+    <string name="sla_escalation_days">أيام التصعيد</string>
+
+    <!-- Roles -->
+    <string name="role_admin">مسؤول النظام</string>
+    <string name="role_coordinator">منسق التخليص</string>
+    <string name="role_supervisor">مشرف</string>
+    <string name="role_viewer">مستعرض</string>
+
+    <!-- Priority -->
+    <string name="priority_normal">عادي</string>
+    <string name="priority_high">عالي</string>
+    <string name="priority_urgent">عاجل</string>
+
+    <!-- Status -->
+    <string name="status_draft">مسودة</string>
+    <string name="status_tender_preparation">إعداد العطاء</string>
+    <string name="status_tender_published">نشر العطاء</string>
+    <string name="status_evaluation_in_progress">التقييم جارٍ</string>
+    <string name="status_contract_pending_signature">العقد في انتظار التوقيع</string>
+    <string name="status_contract_signed">تم توقيع العقد</string>
+    <string name="status_clearance_docs_preparation">إعداد وثائق التخليص</string>
+    <string name="status_declaration_submitted">تم تقديم التصريح الجمركي</string>
+    <string name="status_gov_processing">قيد المعالجة الحكومية</string>
+    <string name="status_gov_approved">اعتمدت الجهات الحكومية</string>
+    <string name="status_final_release_issued">صدر أمر الإفراج النهائي</string>
+    <string name="status_in_transit">قيد النقل</string>
+    <string name="status_received_at_warehouse">وصل للمستودع</string>
+    <string name="status_inspection_complete">اكتمل محضر الاستلام</string>
+    <string name="status_financial_settlement_pending">التسوية المالية جارية</string>
+    <string name="status_closed">مغلقة</string>
+    <string name="status_blocked">محجوبة</string>
+    <string name="status_on_hold">معلقة</string>
+    <string name="status_disputed">متنازع عليها</string>
+</resources>

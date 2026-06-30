@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">Customs Tracker — RMS</string>
+
+    <!-- General -->
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="confirm">Confirm</string>
+    <string name="delete">Delete</string>
+    <string name="edit">Edit</string>
+    <string name="close">Close</string>
+    <string name="back">Back</string>
+    <string name="loading">Loading…</string>
+    <string name="error_generic">An error occurred. Please try again.</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+
+    <!-- Auth -->
+    <string name="login_title">Sign In</string>
+    <string name="login_username">Username</string>
+    <string name="login_password">Password</string>
+    <string name="login_button">Sign In</string>
+    <string name="login_error_invalid">Invalid username or password</string>
+    <string name="logout">Sign Out</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_title">Dashboard</string>
+    <string name="dashboard_active">Active</string>
+    <string name="dashboard_delayed">Delayed</string>
+    <string name="dashboard_closed">Closed</string>
+    <string name="dashboard_overdue">Overdue SLA</string>
+
+    <!-- Transactions -->
+    <string name="transaction_list_title">Transactions</string>
+    <string name="transaction_new">New Transaction</string>
+    <string name="transaction_ref">Transaction Ref</string>
+    <string name="transaction_title_label">Title</string>
+    <string name="transaction_supplier">Supplier</string>
+    <string name="transaction_value">Total Value (JOD)</string>
+    <string name="transaction_status">Status</string>
+    <string name="transaction_phase">Phase</string>
+    <string name="transaction_priority">Priority</string>
+    <string name="transaction_created">Created</string>
+    <string name="transaction_updated">Last Updated</string>
+    <string name="transaction_notes">Notes</string>
+
+    <!-- Phase tracking -->
+    <string name="phase_records_title">Phase Tracking</string>
+    <string name="phase_military">Military Command</string>
+    <string name="phase_customs">Jordan Customs</string>
+    <string name="phase_jfda">JFDA</string>
+    <string name="phase_hard_gate_notice">All three agency approvals required before release order can be issued</string>
+    <string name="phase_overdue_notice">Overdue by %1$d day(s)</string>
+
+    <!-- Documents -->
+    <string name="documents_title">Documents</string>
+    <string name="document_upload">Upload Document</string>
+    <string name="document_type">Document Type</string>
+    <string name="document_verified">Verified</string>
+
+    <!-- Notifications -->
+    <string name="notifications_title">Notifications</string>
+    <string name="notifications_mark_all_read">Mark All Read</string>
+    <string name="notification_sla_breach">SLA Breach</string>
+    <string name="notification_sla_escalated">SLA Escalated</string>
+    <string name="notifications_empty">No notifications</string>
+    <string name="notifications_filter_all">All</string>
+    <string name="notifications_filter_unread">Unread</string>
+    <string name="notifications_filter_sla">SLA</string>
+
+    <!-- Reports -->
+    <string name="reports_title">Reports</string>
+    <string name="report_weekly">Weekly Operations Report</string>
+    <string name="report_monthly">Monthly Analytics Report</string>
+    <string name="report_executive">Executive Summary Report</string>
+    <string name="report_by_officer">By-Officer Report</string>
+    <string name="report_by_officer_desc">Distribution of transactions and values by responsible officer</string>
+    <string name="report_expected_shipments">Expected Shipments Report</string>
+    <string name="report_expected_shipments_desc">Pending shipments sorted by expected arrival date</string>
+    <string name="report_value_by_division">Value by Division Report</string>
+    <string name="report_value_by_division_desc">Total contract value classified by medical division</string>
+    <string name="export_pdf">Export PDF</string>
+    <string name="export_csv">Export CSV</string>
+    <string name="report_generating">Generating report…</string>
+    <string name="report_share">Share Report</string>
+
+    <!-- Dashboard — new sections (Phase G) -->
+    <string name="dashboard_shipment_status">Shipment Status</string>
+    <string name="dashboard_shipment_expected">Expected Arrival</string>
+    <string name="dashboard_shipment_arrived">Arrived</string>
+    <string name="dashboard_shipment_cleared">Cleared</string>
+    <string name="dashboard_upcoming_arrivals">%1$d shipment(s) expected in the next 7 days</string>
+    <string name="dashboard_value_by_division">Value by Medical Division</string>
+    <string name="dashboard_no_overdue">No transactions overdue on schedule ✓</string>
+    <string name="dashboard_kpi_avg_total">Average Total Transaction Time</string>
+    <string name="dashboard_kpi_avg_military">Avg. General Command Processing (4.1)</string>
+    <string name="dashboard_kpi_avg_customs">Avg. Customs Clearance (4.2)</string>
+    <string name="dashboard_kpi_delay_ratio">Delayed Transaction Ratio</string>
+
+    <!-- Transaction fields — new (Phase A) -->
+    <string name="field_accreditation_number">Accreditation Number</string>
+    <string name="field_accreditation_number_hint">Reference number from the Central Tenders Committee</string>
+    <string name="field_responsible_officer">Responsible Officer</string>
+    <string name="field_responsible_officer_hint">Officer assigned to follow up on this transaction</string>
+    <string name="field_division">Division</string>
+    <string name="field_beneficiary">Beneficiary</string>
+    <string name="field_bill_of_lading">Bill of Lading No.</string>
+    <string name="field_bill_of_lading_hint">Airway Bill / Bill of Lading</string>
+    <string name="field_expected_arrival">Expected Arrival Date</string>
+    <string name="field_actual_arrival">Actual Arrival Date</string>
+    <string name="field_shipment_status">Shipment Status</string>
+
+    <!-- Divisions (Department enum) -->
+    <string name="dept_pharmacy">Pharmacy Division</string>
+    <string name="dept_medical_consumables">Medical Consumables Division</string>
+    <string name="dept_medical_devices">Medical Devices Division</string>
+
+    <!-- Beneficiary enum -->
+    <string name="beneficiary_rms">Royal Medical Services</string>
+    <string name="beneficiary_bank">Bank</string>
+
+    <!-- Shipment status enum -->
+    <string name="shipment_status_expected">Expected</string>
+    <string name="shipment_status_arrived">Arrived</string>
+    <string name="shipment_status_cleared">Cleared</string>
+
+    <!-- Shipment actions -->
+    <string name="action_mark_arrived">Record Shipment Arrival</string>
+    <string name="action_mark_cleared">Confirm Clearance Complete</string>
+    <string name="action_clearance_done">✓  Final clearance complete</string>
+
+    <!-- Assigned entities — new (Phase A) -->
+    <string name="entity_health_ministry">Ministry of Health</string>
+    <string name="entity_royal_jordanian">Royal Jordanian / Military Airport</string>
+
+    <!-- Phase labels (Phase B — corrected official names) -->
+    <string name="phase_1_label">Tender Preparation &amp; Publication</string>
+    <string name="phase_2_label">Tender Award &amp; Contract Signing</string>
+    <string name="phase_3_label">Customs Clearance Request</string>
+    <string name="phase_4_label">Gov &amp; Military Agency Processing</string>
+    <string name="phase_5_label">Shipment Release</string>
+    <string name="phase_6_label">Transport &amp; Warehouse Receipt</string>
+    <string name="phase_7_label">Transaction Closing &amp; Financial Settlement</string>
+
+    <!-- Phase 4 — optional Ministry of Health track (Phase B) -->
+    <string name="phase_4_moh_optional_notice">This track is optional and does not apply by default. Activate it if this transaction requires Ministry of Health approval.</string>
+    <string name="action_activate_moh_track">Activate Ministry of Health Track</string>
+
+    <!-- Transaction list filters (Phase E) -->
+    <string name="filter_all_divisions">All Divisions</string>
+    <string name="filter_all_beneficiaries">All Beneficiaries</string>
+    <string name="search_hint">Search by accreditation, supplier, officer, BOL…</string>
+
+    <!-- Content descriptions (accessibility) -->
+    <string name="cd_edit_bill_of_lading">Edit bill of lading number</string>
+    <string name="cd_select_date">Select date</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_create_transaction">Create transaction</string>
+
+    <!-- SLA Admin -->
+    <string name="sla_admin_title">SLA Configuration</string>
+    <string name="sla_admin_subtitle">Tap any phase to edit its time target</string>
+    <string name="sla_target_days">Target Days</string>
+    <string name="sla_escalation_days">Escalation Days</string>
+
+    <!-- Roles -->
+    <string name="role_admin">System Admin</string>
+    <string name="role_coordinator">Clearance Coordinator</string>
+    <string name="role_supervisor">Supervisor</string>
+    <string name="role_viewer">Viewer</string>
+
+    <!-- Priority -->
+    <string name="priority_normal">Normal</string>
+    <string name="priority_high">High</string>
+    <string name="priority_urgent">Urgent</string>
+
+    <!-- Status -->
+    <string name="status_draft">Draft</string>
+    <string name="status_tender_preparation">Tender Preparation</string>
+    <string name="status_tender_published">Tender Published</string>
+    <string name="status_evaluation_in_progress">Evaluation in Progress</string>
+    <string name="status_contract_pending_signature">Contract Pending Signature</string>
+    <string name="status_contract_signed">Contract Signed</string>
+    <string name="status_clearance_docs_preparation">Clearance Docs Preparation</string>
+    <string name="status_declaration_submitted">Declaration Submitted</string>
+    <string name="status_gov_processing">Gov-Agency Processing</string>
+    <string name="status_gov_approved">Gov Approved</string>
+    <string name="status_final_release_issued">Final Release Issued</string>
+    <string name="status_in_transit">In Transit</string>
+    <string name="status_received_at_warehouse">Received at Warehouse</string>
+    <string name="status_inspection_complete">Inspection Complete</string>
+    <string name="status_financial_settlement_pending">Financial Settlement Pending</string>
+    <string name="status_closed">Closed</string>
+    <string name="status_blocked">Blocked</string>
+    <string name="status_on_hold">On Hold</string>
+    <string name="status_disputed">Disputed</string>
+</resources>

@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+dist/
+.next/
+
+# Android build output
+*.apk
+*.aab
+*.dex
+local.properties
+CustomsTracker/app/build/
+CustomsTracker/.gradle/
+CustomsTracker/build/
+CustomsTrackerDemo/app/build/
+CustomsTrackerDemo/.gradle/
+CustomsTrackerDemo/build/
