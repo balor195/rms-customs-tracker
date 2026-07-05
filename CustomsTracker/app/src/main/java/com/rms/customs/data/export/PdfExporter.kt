@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
-import com.rms.customs.domain.model.PhaseRecord
 import com.rms.customs.domain.model.Transaction
 import com.rms.customs.domain.model.enums.Department
 import com.rms.customs.domain.model.enums.ShipmentStatus
@@ -14,7 +13,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.roundToInt
@@ -56,23 +54,16 @@ class PdfExporter @Inject constructor(
 
     // ── Public API ────────────────────────────────────────────────────────────
 
-    fun generateWeekly(txs: List<Transaction>, phases: List<PhaseRecord>): File {
-        val now        = System.currentTimeMillis()
-        val active     = txs.filter { it.isActive }
-        val overdueMap = phases.groupBy { it.transactionId }
+    fun generateWeekly(txs: List<Transaction>): File {
+        val active = txs.filter { it.isActive }
 
         val rows = active.map { tx ->
-            val maxOverdue = overdueMap[tx.id]?.mapNotNull { p ->
-                p.startedAt?.let {
-                    TimeUnit.MILLISECONDS.toDays(now - it).toInt() - (p.slaTargetDays ?: 0)
-                }
-            }?.filter { it > 0 }?.maxOrNull() ?: 0
             listOf(
                 tx.accreditationNumber ?: tx.transactionRef,
                 clip(tx.supplierName, 18),
                 clip(tx.responsibleOfficer.ifBlank { "—" }, 14),
                 tx.division?.labelAr ?: "—",
-                if (maxOverdue > 0) "متأخر $maxOverdue ي" else "✓ في الوقت",
+                tx.currentPhase.labelAr,
             )
         }
 
@@ -80,36 +71,24 @@ class PdfExporter @Inject constructor(
             typeName    = "weekly",
             title       = "التقرير الأسبوعي التشغيلي",
             subtitle    = "المعاملات النشطة — ${active.size} معاملة",
-            colHeaders  = listOf("رقم الاعتماد", "المورد", "الضابط", "الشعبة", "حالة SLA"),
+            colHeaders  = listOf("رقم الاعتماد", "المورد", "الضابط", "الشعبة", "المرحلة"),
             colWidths   = listOf(0.20f, 0.24f, 0.18f, 0.20f, 0.18f),
             rows        = rows,
-            footer      = "إجمالي النشطة: ${active.size}   |   تجاوزت SLA: ${phases.count { it.isOverSla }}",
+            footer      = "إجمالي النشطة: ${active.size}",
         )
     }
 
-    fun generateMonthly(
-        txs: List<Transaction>,
-        phases: List<PhaseRecord>,
-        militaryPhases: List<PhaseRecord>,
-        customsPhases: List<PhaseRecord>,
-    ): File {
+    fun generateMonthly(txs: List<Transaction>): File {
         val active        = txs.filter { it.isActive }
         val startOfMonth  = startOfMonth()
         val closedMonth   = txs.count { it.closedAt != null && it.closedAt >= startOfMonth }
-        val overdueCnt    = phases.count { it.isOverSla }
         val avgTotal      = avgDays(txs.filter { it.closedAt != null }.map { it.closedAt!! - it.createdAt })
-        val avgMilitary   = avgDays(militaryPhases.mapNotNull { durationMs(it) })
-        val avgCustoms    = avgDays(customsPhases.mapNotNull   { durationMs(it) })
         val monthName     = SimpleDateFormat("MMMM yyyy", Locale.forLanguageTag("ar")).format(Date())
 
         val rows = listOf(
             row("إجمالي المعاملات النشطة",           "${active.size}"),
             row("مغلقة هذا الشهر",                    "$closedMonth"),
-            row("معاملات تجاوزت SLA",                 "$overdueCnt"),
             row("متوسط وقت الإنجاز الكلي",           avgTotal?.let { "${it.roundToInt()} يوم" } ?: "—"),
-            row("متوسط القيادة العامة (4.1)",          avgMilitary?.let { "${it.roundToInt()} يوم" } ?: "—"),
-            row("متوسط الجمارك الأردنية (4.2)",       avgCustoms?.let { "${it.roundToInt()} يوم" } ?: "—"),
-            row("نسبة التأخر الإجمالية",               pct(overdueCnt, active.size.coerceAtLeast(1))),
         )
 
         return buildPdf(
@@ -123,34 +102,19 @@ class PdfExporter @Inject constructor(
         )
     }
 
-    fun generateExecutive(
-        txs: List<Transaction>,
-        phases: List<PhaseRecord>,
-        militaryPhases: List<PhaseRecord>,
-        customsPhases: List<PhaseRecord>,
-    ): File {
+    fun generateExecutive(txs: List<Transaction>): File {
         val active       = txs.filter { it.isActive }
-        val overdueCnt   = phases.count { it.isOverSla }
         val avgTotal     = avgDays(txs.filter { it.closedAt != null }.map { it.closedAt!! - it.createdAt })
-        val avgMilitary  = avgDays(militaryPhases.mapNotNull { durationMs(it) })
-        val bottlenecks  = phases.filter { it.isOverSla }
-            .groupBy { it.subPhase }.entries
-            .sortedByDescending { it.value.size }.take(3)
 
         val summaryRows = listOf(
             row("إجمالي المعاملات النشطة",  "${active.size}"),
-            row("معاملات تجاوزت SLA",        "$overdueCnt"),
-            row("نسبة التأخر",                pct(overdueCnt, active.size.coerceAtLeast(1))),
             row("متوسط وقت الإنجاز الكلي",  avgTotal?.let { "${it.roundToInt()} يوم" } ?: "—"),
-            row("متوسط القيادة العامة",       avgMilitary?.let { "${it.roundToInt()} يوم" } ?: "—"),
-        ) + bottlenecks.mapIndexed { i, (sub, recs) ->
-            row("اختناق ${i + 1}: ${subPhaseLabel(sub)}", "${recs.size} معاملة")
-        }
+        )
 
         return buildPdf(
             typeName   = "executive",
             title      = "التقرير التنفيذي",
-            subtitle   = "ملخص لمديرية الصيدلة والتجهيزات الطبية — الخدمات الطبية الملكية",
+            subtitle   = "ملخص لمديرية الصيدلة والتزويد الطبّي — الخدمات الطبية الملكية",
             colHeaders = listOf("المؤشر", "القيمة"),
             colWidths  = listOf(0.74f, 0.26f),
             rows       = summaryRows,
@@ -268,7 +232,7 @@ class PdfExporter @Inject constructor(
 
         // Org header
         cv.drawText(
-            "الخدمات الطبية الملكية — مديرية الصيدلة والتجهيزات الطبية",
+            "الخدمات الطبية الملكية — مديرية الصيدلة والتزويد الطبّي",
             MARGIN, y + 10f, orgPaint,
         )
         cv.drawText(nowStr(), PAGE_W - MARGIN, y + 10f, datePaint)
@@ -330,22 +294,10 @@ class PdfExporter @Inject constructor(
     private fun avgDays(durations: List<Long>): Double? =
         durations.takeIf { it.isNotEmpty() }?.average()?.div(86_400_000.0)
 
-    private fun durationMs(p: PhaseRecord): Long? =
-        if (p.startedAt != null && p.completedAt != null) p.completedAt - p.startedAt else null
-
-    private fun pct(num: Int, den: Int): String = "${num * 100 / den}%"
-
     private fun nowStr() = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.US).format(Date())
 
     private fun startOfMonth(): Long = Calendar.getInstance().apply {
         set(Calendar.DAY_OF_MONTH, 1); set(Calendar.HOUR_OF_DAY, 0)
         set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
     }.timeInMillis
-
-    private fun subPhaseLabel(sub: String) = when (sub) {
-        "4.1" -> "القيادة العامة — الإعفاء"
-        "4.2" -> "الجمارك الأردنية — الفحص"
-        "4.3" -> "هيئة الغذاء والدواء"
-        else  -> "المرحلة $sub"
-    }
 }

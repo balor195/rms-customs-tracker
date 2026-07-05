@@ -4,6 +4,7 @@ import com.rms.customs.data.local.dao.UserDao
 import com.rms.customs.data.local.entity.toDomain
 import com.rms.customs.data.local.entity.toEntity
 import com.rms.customs.domain.model.User
+import com.rms.customs.domain.model.enums.Department
 import com.rms.customs.domain.model.enums.UserRole
 import com.rms.customs.domain.repository.UserRepository
 import com.rms.customs.domain.usecase.PasswordHasher
@@ -49,7 +50,7 @@ class UserRepositoryImpl @Inject constructor(
         userDao.updateLastLogin(id.toString(), System.currentTimeMillis())
     }
 
-    override suspend fun updateRole(id: UUID, role: UserRole) {
-        userDao.updateRole(id.toString(), role.name)
+    override suspend fun updateRole(id: UUID, role: UserRole, department: Department?) {
+        userDao.updateRole(id.toString(), role.name, department?.name)
     }
 }

@@ -38,6 +38,9 @@ data class TransactionEntity(
     val expectedArrivalDate: Long?,         // millis
     val actualArrivalDate: Long?,           // millis
     val shipmentStatus: String,             // ShipmentStatus.name
+    val weightKg: Double?,                  // وزن الشحنة (كغم)
+    val isRefrigerated: Boolean,            // هل الشحنة مبرّدة
+    val defaultShelfLife: String?,          // العمر الافتراضي (شعبة المستهلكات فقط)
     val currentPhase: String,              // TransactionPhase.name
     val currentStatus: String,             // TransactionStatus.name
     val exceptionState: String?,           // TransactionStatus.name or null
@@ -66,6 +69,9 @@ fun TransactionEntity.toDomain() = Transaction(
     expectedArrivalDate = expectedArrivalDate,
     actualArrivalDate = actualArrivalDate,
     shipmentStatus = ShipmentStatus.valueOf(shipmentStatus),
+    weightKg = weightKg,
+    isRefrigerated = isRefrigerated,
+    defaultShelfLife = defaultShelfLife,
     currentPhase = TransactionPhase.valueOf(currentPhase),
     currentStatus = TransactionStatus.valueOf(currentStatus),
     exceptionState = exceptionState?.let { TransactionStatus.valueOf(it) },
@@ -94,6 +100,9 @@ fun Transaction.toEntity() = TransactionEntity(
     expectedArrivalDate = expectedArrivalDate,
     actualArrivalDate = actualArrivalDate,
     shipmentStatus = shipmentStatus.name,
+    weightKg = weightKg,
+    isRefrigerated = isRefrigerated,
+    defaultShelfLife = defaultShelfLife,
     currentPhase = currentPhase.name,
     currentStatus = currentStatus.name,
     exceptionState = exceptionState?.name,

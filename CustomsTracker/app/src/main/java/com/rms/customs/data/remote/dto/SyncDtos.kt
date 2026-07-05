@@ -1,25 +1,8 @@
 package com.rms.customs.data.remote.dto
 
-import com.rms.customs.data.local.entity.PhaseRecordEntity
 import com.rms.customs.data.local.entity.TransactionEntity
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-
-@Serializable
-data class PhaseRecordSyncDto(
-    val id: String,
-    @SerialName("transaction_id") val transactionId: String,
-    @SerialName("phase_number") val phaseNumber: Int,
-    @SerialName("sub_phase") val subPhase: String,
-    val status: String,
-    @SerialName("assigned_to_entity") val assignedToEntity: String,
-    @SerialName("started_at") val startedAt: Long? = null,
-    @SerialName("completed_at") val completedAt: Long? = null,
-    @SerialName("sla_target_days") val slaTargetDays: Int? = null,
-    @SerialName("blocker_reason") val blockerReason: String? = null,
-    @SerialName("completed_by_user_id") val completedByUserId: String? = null,
-    val notes: String? = null,
-)
 
 @Serializable
 data class TransactionSyncDto(
@@ -48,7 +31,9 @@ data class TransactionSyncDto(
     @SerialName("updated_at") val updatedAt: Long,
     @SerialName("closed_at") val closedAt: Long? = null,
     val notes: String? = null,
-    @SerialName("phase_records") val phaseRecords: List<PhaseRecordSyncDto> = emptyList(),
+    @SerialName("weight_kg") val weightKg: Double? = null,
+    @SerialName("is_refrigerated") val isRefrigerated: Boolean = false,
+    @SerialName("default_shelf_life") val defaultShelfLife: String? = null,
 )
 
 @Serializable
@@ -71,7 +56,7 @@ data class SyncPullResponse(
 
 // ── Entity ↔ DTO converters ───────────────────────────────────────────────────
 
-fun TransactionEntity.toSyncDto(phases: List<PhaseRecordEntity> = emptyList()) = TransactionSyncDto(
+fun TransactionEntity.toSyncDto() = TransactionSyncDto(
     id                   = id,
     transactionRef       = transactionRef,
     title                = title,
@@ -97,22 +82,9 @@ fun TransactionEntity.toSyncDto(phases: List<PhaseRecordEntity> = emptyList()) =
     updatedAt            = updatedAt,
     closedAt             = closedAt,
     notes                = notes,
-    phaseRecords         = phases.map { it.toSyncDto() },
-)
-
-fun PhaseRecordEntity.toSyncDto() = PhaseRecordSyncDto(
-    id                 = id,
-    transactionId      = transactionId,
-    phaseNumber        = phaseNumber,
-    subPhase           = subPhase,
-    status             = status,
-    assignedToEntity   = assignedToEntity,
-    startedAt          = startedAt,
-    completedAt        = completedAt,
-    slaTargetDays      = slaTargetDays,
-    blockerReason      = blockerReason,
-    completedByUserId  = completedByUserId,
-    notes              = notes,
+    weightKg             = weightKg,
+    isRefrigerated       = isRefrigerated,
+    defaultShelfLife     = defaultShelfLife,
 )
 
 fun TransactionSyncDto.toEntity() = TransactionEntity(
@@ -141,19 +113,7 @@ fun TransactionSyncDto.toEntity() = TransactionEntity(
     updatedAt            = updatedAt,
     closedAt             = closedAt,
     notes                = notes,
-)
-
-fun PhaseRecordSyncDto.toEntity() = PhaseRecordEntity(
-    id                 = id,
-    transactionId      = transactionId,
-    phaseNumber        = phaseNumber,
-    subPhase           = subPhase,
-    status             = status,
-    assignedToEntity   = assignedToEntity,
-    startedAt          = startedAt,
-    completedAt        = completedAt,
-    slaTargetDays      = slaTargetDays,
-    blockerReason      = blockerReason,
-    completedByUserId  = completedByUserId,
-    notes              = notes,
+    weightKg             = weightKg,
+    isRefrigerated       = isRefrigerated,
+    defaultShelfLife     = defaultShelfLife,
 )

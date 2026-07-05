@@ -3,6 +3,8 @@ package com.rms.customs.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rms.customs.data.local.SessionStore
+import com.rms.customs.domain.model.enums.Department
+import com.rms.customs.domain.model.enums.UserRole
 import com.rms.customs.domain.repository.UserRepository
 import com.rms.customs.domain.usecase.LoginResult
 import com.rms.customs.domain.usecase.LoginUseCase
@@ -114,6 +116,31 @@ class AuthViewModel @Inject constructor(
     fun logout() {
         sessionStore.clear()
         _uiState.update { it.copy(authState = AuthState.LoggedOut, errorMessageAr = null) }
+    }
+
+    /**
+     * ADMIN-only, in-memory-only role/division impersonation for testing — never persisted to
+     * [SessionStore] or the database, and reset automatically on logout or app restart.
+     */
+    fun viewAs(role: UserRole, department: Department?) {
+        val loggedIn = _uiState.value.authState as? AuthState.LoggedIn ?: return
+        val session  = loggedIn.session
+        val realUser = session.realUser ?: session.user
+        if (realUser.role != UserRole.ADMIN) return
+
+        val simulatedUser = realUser.copy(role = role, department = department)
+        _uiState.update {
+            it.copy(authState = AuthState.LoggedIn(session.copy(user = simulatedUser, realUser = realUser)))
+        }
+    }
+
+    fun exitViewAs() {
+        val loggedIn = _uiState.value.authState as? AuthState.LoggedIn ?: return
+        val session  = loggedIn.session
+        val realUser = session.realUser ?: return
+        _uiState.update {
+            it.copy(authState = AuthState.LoggedIn(session.copy(user = realUser, realUser = null)))
+        }
     }
 
     fun clearError() {

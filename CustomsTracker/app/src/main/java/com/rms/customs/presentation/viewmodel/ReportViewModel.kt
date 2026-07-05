@@ -65,14 +65,11 @@ class ReportViewModel @Inject constructor(
     fun exportPdf() = viewModelScope.launch {
         _exportState.value = ExportState.Generating
         runCatching {
-            val txs      = transactionRepository.observeAll().first()
-            val phases   = transactionRepository.observeAllInProgressPhases().first()
-            val military = transactionRepository.observeCompletedPhasesBySubPhase("4.1").first()
-            val customs  = transactionRepository.observeCompletedPhasesBySubPhase("4.2").first()
+            val txs = transactionRepository.observeAll().first()
             val file = when (_selectedType.value) {
-                ReportType.WEEKLY             -> pdfExporter.generateWeekly(txs, phases)
-                ReportType.MONTHLY            -> pdfExporter.generateMonthly(txs, phases, military, customs)
-                ReportType.EXECUTIVE          -> pdfExporter.generateExecutive(txs, phases, military, customs)
+                ReportType.WEEKLY             -> pdfExporter.generateWeekly(txs)
+                ReportType.MONTHLY            -> pdfExporter.generateMonthly(txs)
+                ReportType.EXECUTIVE          -> pdfExporter.generateExecutive(txs)
                 ReportType.BY_OFFICER         -> pdfExporter.generateByOfficer(txs)
                 ReportType.EXPECTED_SHIPMENTS -> pdfExporter.generateExpectedShipments(txs)
                 ReportType.VALUE_BY_DIVISION  -> pdfExporter.generateValueByDivision(txs)
@@ -87,10 +84,9 @@ class ReportViewModel @Inject constructor(
     fun exportCsv() = viewModelScope.launch {
         _exportState.value = ExportState.Generating
         runCatching {
-            val txs    = transactionRepository.observeAll().first()
-            val phases = transactionRepository.observeAllInProgressPhases().first()
+            val txs = transactionRepository.observeAll().first()
             val file = when (_selectedType.value) {
-                ReportType.WEEKLY             -> csvExporter.generateWeekly(txs, phases)
+                ReportType.WEEKLY             -> csvExporter.generateWeekly(txs)
                 ReportType.MONTHLY,
                 ReportType.EXECUTIVE          -> csvExporter.generateAll(txs)
                 ReportType.BY_OFFICER         -> csvExporter.generateByOfficer(txs)

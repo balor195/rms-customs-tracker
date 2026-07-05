@@ -11,19 +11,10 @@ fun TransactionStatus.labelAr(): String = when (this) {
     TransactionStatus.DRAFT                        -> "مسودة"
     TransactionStatus.TENDER_PREPARATION           -> "تحضير المناقصة"
     TransactionStatus.TENDER_PUBLISHED             -> "نشر المناقصة"
-    TransactionStatus.EVALUATION_IN_PROGRESS       -> "تقييم العروض"
-    TransactionStatus.CONTRACT_PENDING_SIGNATURE   -> "انتظار توقيع العقد"
-    TransactionStatus.CONTRACT_SIGNED              -> "العقد موقَّع"
-    TransactionStatus.CLEARANCE_DOCS_PREPARATION   -> "تحضير ملف التخليص"
-    TransactionStatus.DECLARATION_SUBMITTED        -> "التصريح مقدَّم"
-    TransactionStatus.GOV_PROCESSING               -> "قيد المعالجة الحكومية"
-    TransactionStatus.GOV_APPROVED                 -> "اعتماد حكومي"
-    TransactionStatus.FINAL_RELEASE_ISSUED         -> "أمر الإفراج النهائي"
-    TransactionStatus.IN_TRANSIT                   -> "في الطريق"
-    TransactionStatus.RECEIVED_AT_WAREHOUSE        -> "تم الاستلام بالمستودع"
-    TransactionStatus.INSPECTION_COMPLETE          -> "اكتملت المعاينة"
+    TransactionStatus.CLEARANCE_ISSUED             -> "تم التخليص"
     TransactionStatus.FINANCIAL_SETTLEMENT_PENDING -> "انتظار التسوية المالية"
-    TransactionStatus.CLOSED                       -> "مغلقة"
+    TransactionStatus.CLOSED                       -> "التسوية المالية مكتملة"
+    TransactionStatus.TRANSFERRED_TO_WAREHOUSE     -> "تم النقل الى المستودعات"
     TransactionStatus.BLOCKED                      -> "محجوبة"
     TransactionStatus.ON_HOLD                      -> "معلّقة"
     TransactionStatus.DISPUTED                     -> "متنازع عليها"
@@ -31,9 +22,9 @@ fun TransactionStatus.labelAr(): String = when (this) {
 
 fun TransactionStatus.statusColor(): Color = when (this) {
     TransactionStatus.BLOCKED,
-    TransactionStatus.DISPUTED                     -> CustomsColors.Overdue
+    TransactionStatus.DISPUTED,
+    TransactionStatus.TRANSFERRED_TO_WAREHOUSE     -> CustomsColors.Overdue
     TransactionStatus.ON_HOLD                      -> CustomsColors.Warning
-    TransactionStatus.GOV_PROCESSING               -> CustomsColors.Military
     TransactionStatus.CLOSED                       -> Color(0xFF757575)
     else                                           -> CustomsColors.OnTime
 }

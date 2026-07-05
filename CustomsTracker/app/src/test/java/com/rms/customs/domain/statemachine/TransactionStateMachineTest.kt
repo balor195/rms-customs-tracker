@@ -1,7 +1,6 @@
 package com.rms.customs.domain.statemachine
 
 import com.rms.customs.domain.model.Transaction
-import com.rms.customs.domain.model.enums.Priority
 import com.rms.customs.domain.model.enums.TransactionPhase
 import com.rms.customs.domain.model.enums.TransactionStatus
 import com.rms.customs.domain.model.enums.TransactionStatus.*
@@ -56,89 +55,57 @@ class TransactionStateMachineTest {
     @Test fun `TENDER_PREPARATION to TENDER_PUBLISHED succeeds`() =
         assertSuccess(machine.advance(tx(TENDER_PREPARATION), TENDER_PUBLISHED))
 
-    @Test fun `TENDER_PUBLISHED to EVALUATION_IN_PROGRESS succeeds`() =
-        assertSuccess(machine.advance(tx(TENDER_PUBLISHED), EVALUATION_IN_PROGRESS))
+    @Test fun `TENDER_PUBLISHED to CLEARANCE_ISSUED succeeds`() =
+        assertSuccess(machine.advance(tx(TENDER_PUBLISHED), CLEARANCE_ISSUED))
 
-    @Test fun `EVALUATION_IN_PROGRESS to CONTRACT_PENDING_SIGNATURE succeeds`() =
-        assertSuccess(machine.advance(tx(EVALUATION_IN_PROGRESS), CONTRACT_PENDING_SIGNATURE))
-
-    @Test fun `CONTRACT_PENDING_SIGNATURE to CONTRACT_SIGNED succeeds`() =
-        assertSuccess(machine.advance(tx(CONTRACT_PENDING_SIGNATURE), CONTRACT_SIGNED))
-
-    @Test fun `CONTRACT_SIGNED to CLEARANCE_DOCS_PREPARATION succeeds`() =
-        assertSuccess(machine.advance(tx(CONTRACT_SIGNED), CLEARANCE_DOCS_PREPARATION))
-
-    @Test fun `CLEARANCE_DOCS_PREPARATION to DECLARATION_SUBMITTED succeeds`() =
-        assertSuccess(machine.advance(tx(CLEARANCE_DOCS_PREPARATION), DECLARATION_SUBMITTED))
-
-    @Test fun `DECLARATION_SUBMITTED to GOV_PROCESSING succeeds`() =
-        assertSuccess(machine.advance(tx(DECLARATION_SUBMITTED), GOV_PROCESSING))
-
-    @Test fun `GOV_PROCESSING to GOV_APPROVED succeeds`() =
-        assertSuccess(machine.advance(tx(GOV_PROCESSING), GOV_APPROVED))
-
-    @Test fun `GOV_APPROVED to FINAL_RELEASE_ISSUED succeeds`() =
-        assertSuccess(machine.advance(tx(GOV_APPROVED), FINAL_RELEASE_ISSUED))
-
-    @Test fun `FINAL_RELEASE_ISSUED to IN_TRANSIT succeeds`() =
-        assertSuccess(machine.advance(tx(FINAL_RELEASE_ISSUED), IN_TRANSIT))
-
-    @Test fun `IN_TRANSIT to RECEIVED_AT_WAREHOUSE succeeds`() =
-        assertSuccess(machine.advance(tx(IN_TRANSIT), RECEIVED_AT_WAREHOUSE))
-
-    @Test fun `RECEIVED_AT_WAREHOUSE to INSPECTION_COMPLETE succeeds`() =
-        assertSuccess(machine.advance(tx(RECEIVED_AT_WAREHOUSE), INSPECTION_COMPLETE))
-
-    @Test fun `INSPECTION_COMPLETE to FINANCIAL_SETTLEMENT_PENDING succeeds`() =
-        assertSuccess(machine.advance(tx(INSPECTION_COMPLETE), FINANCIAL_SETTLEMENT_PENDING))
+    @Test fun `CLEARANCE_ISSUED to FINANCIAL_SETTLEMENT_PENDING succeeds`() =
+        assertSuccess(machine.advance(tx(CLEARANCE_ISSUED), FINANCIAL_SETTLEMENT_PENDING))
 
     @Test fun `FINANCIAL_SETTLEMENT_PENDING to CLOSED succeeds`() =
         assertSuccess(machine.advance(tx(FINANCIAL_SETTLEMENT_PENDING), CLOSED))
 
+    @Test fun `CLOSED to TRANSFERRED_TO_WAREHOUSE succeeds`() =
+        assertSuccess(machine.advance(tx(CLOSED), TRANSFERRED_TO_WAREHOUSE))
+
     // ── Invalid skip transitions ───────────────────────────────────────────
 
-    @Test fun `DRAFT cannot skip to GOV_PROCESSING`() =
-        assertFailure(machine.advance(tx(DRAFT), GOV_PROCESSING))
+    @Test fun `DRAFT cannot skip to CLEARANCE_ISSUED`() =
+        assertFailure(machine.advance(tx(DRAFT), CLEARANCE_ISSUED))
 
-    @Test fun `TENDER_PREPARATION cannot skip to CONTRACT_SIGNED`() =
-        assertFailure(machine.advance(tx(TENDER_PREPARATION), CONTRACT_SIGNED))
+    @Test fun `TENDER_PREPARATION cannot skip to FINANCIAL_SETTLEMENT_PENDING`() =
+        assertFailure(machine.advance(tx(TENDER_PREPARATION), FINANCIAL_SETTLEMENT_PENDING))
 
-    @Test fun `CONTRACT_SIGNED cannot skip to FINAL_RELEASE_ISSUED`() =
-        assertFailure(machine.advance(tx(CONTRACT_SIGNED), FINAL_RELEASE_ISSUED))
+    @Test fun `CLEARANCE_ISSUED cannot skip to CLOSED`() =
+        assertFailure(machine.advance(tx(CLEARANCE_ISSUED), CLOSED))
+
+    @Test fun `CLEARANCE_ISSUED cannot skip to TRANSFERRED_TO_WAREHOUSE`() =
+        assertFailure(machine.advance(tx(CLEARANCE_ISSUED), TRANSFERRED_TO_WAREHOUSE))
 
     // ── Invalid reverse transitions ────────────────────────────────────────
 
-    @Test fun `CONTRACT_SIGNED cannot go back to TENDER_PREPARATION`() =
-        assertFailure(machine.advance(tx(CONTRACT_SIGNED), TENDER_PREPARATION))
+    @Test fun `CLEARANCE_ISSUED cannot go back to TENDER_PREPARATION`() =
+        assertFailure(machine.advance(tx(CLEARANCE_ISSUED), TENDER_PREPARATION))
 
-    @Test fun `GOV_APPROVED cannot go back to EVALUATION_IN_PROGRESS`() =
-        assertFailure(machine.advance(tx(GOV_APPROVED), EVALUATION_IN_PROGRESS))
+    @Test fun `CLOSED cannot go back to FINANCIAL_SETTLEMENT_PENDING`() =
+        assertFailure(machine.advance(tx(CLOSED), FINANCIAL_SETTLEMENT_PENDING))
 
     // ── Terminal state ─────────────────────────────────────────────────────
 
-    @Test fun `CLOSED rejects any further transition`() {
-        assertFailure(machine.advance(tx(CLOSED), FINANCIAL_SETTLEMENT_PENDING))
-        assertFailure(machine.advance(tx(CLOSED), TENDER_PREPARATION))
-        assertFailure(machine.advance(tx(CLOSED), BLOCKED))
+    @Test fun `TRANSFERRED_TO_WAREHOUSE rejects any further transition`() {
+        assertFailure(machine.advance(tx(TRANSFERRED_TO_WAREHOUSE), CLOSED))
+        assertFailure(machine.advance(tx(TRANSFERRED_TO_WAREHOUSE), TENDER_PREPARATION))
+        assertFailure(machine.advance(tx(TRANSFERRED_TO_WAREHOUSE), BLOCKED))
     }
 
-    // ── Hard Gate 1: DECLARATION_SUBMITTED requires CONTRACT_SIGNED history ─
+    // ── Hard Gate: TRANSFERRED_TO_WAREHOUSE requires CLOSED ─────────────────
 
-    @Test fun `Hard Gate 1 - CLEARANCE_DOCS_PREPARATION to DECLARATION_SUBMITTED passes (contract milestone already behind)`() {
-        // currentStatus is CLEARANCE_DOCS_PREPARATION which comes after CONTRACT_SIGNED
-        assertSuccess(machine.advance(tx(CLEARANCE_DOCS_PREPARATION), DECLARATION_SUBMITTED))
-    }
-
-    // ── Hard Gate 3: IN_TRANSIT requires FINAL_RELEASE_ISSUED ──────────────
-
-    @Test fun `Hard Gate 3 - cannot transit without FINAL_RELEASE_ISSUED`() {
-        // Try to skip to IN_TRANSIT from a state before FINAL_RELEASE_ISSUED
-        val result = machine.advance(tx(GOV_APPROVED), IN_TRANSIT)
+    @Test fun `Hard Gate - cannot confirm warehouse transfer before financial closing`() {
+        val result = machine.advance(tx(FINANCIAL_SETTLEMENT_PENDING), TRANSFERRED_TO_WAREHOUSE)
         assertFailure(result)
     }
 
-    @Test fun `Hard Gate 3 - IN_TRANSIT succeeds when current is FINAL_RELEASE_ISSUED`() =
-        assertSuccess(machine.advance(tx(FINAL_RELEASE_ISSUED), IN_TRANSIT))
+    @Test fun `Hard Gate - TRANSFERRED_TO_WAREHOUSE succeeds when current is CLOSED`() =
+        assertSuccess(machine.advance(tx(CLOSED), TRANSFERRED_TO_WAREHOUSE))
 
     // ── canAdvance helper ──────────────────────────────────────────────────
 

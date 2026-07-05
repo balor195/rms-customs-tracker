@@ -45,3 +45,9 @@
 
 # Domain model enums (used via reflection by Room)
 -keepclassmembers enum com.rms.customs.domain.model.enums.** { *; }
+
+# Error-prone annotations are compile-time only (pulled in transitively by security-crypto/Tink)
+-dontwarn com.google.errorprone.annotations.CanIgnoreReturnValue
+-dontwarn com.google.errorprone.annotations.CheckReturnValue
+-dontwarn com.google.errorprone.annotations.Immutable
+-dontwarn com.google.errorprone.annotations.RestrictedApi

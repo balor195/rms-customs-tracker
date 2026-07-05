@@ -1,8 +1,7 @@
 package com.rms.customs.presentation.ui.transaction
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,8 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,108 +24,107 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.rms.customs.domain.model.PhaseRecord
 import com.rms.customs.domain.model.Transaction
-import com.rms.customs.domain.model.enums.PhaseStatus
 import com.rms.customs.domain.model.enums.TransactionPhase
-import com.rms.customs.domain.model.enums.TransactionStatus
 import com.rms.customs.domain.model.enums.toPhase
 import com.rms.customs.presentation.ui.theme.CustomsColors
+
+// ── Timeline status ───────────────────────────────────────────────────────────
 
 private enum class TlStatus { DONE, IN_PROGRESS, PENDING }
 
 private fun TransactionPhase.resolveStatus(tx: Transaction): TlStatus {
     val txPhase = tx.currentStatus.toPhase()
     return when {
-        // GOV_APPROVED finalises Phase 4 before currentPhase updates to Phase 5
-        this == TransactionPhase.PHASE_4_GOV_AGENCIES
-                && tx.currentStatus == TransactionStatus.GOV_APPROVED -> TlStatus.DONE
         number < txPhase.number  -> TlStatus.DONE
         number == txPhase.number -> TlStatus.IN_PROGRESS
         else                     -> TlStatus.PENDING
     }
 }
 
-private fun TlStatus.dotColor(): Color = when (this) {
-    TlStatus.DONE        -> CustomsColors.OnTime
-    TlStatus.IN_PROGRESS -> CustomsColors.Military
-    TlStatus.PENDING     -> Color(0xFFBDBDBD)
-}
+// ── Node sizes ────────────────────────────────────────────────────────────────
+
+private val NodeSizeDone     = 22.dp
+private val NodeSizeActive   = 26.dp
+private val NodeSizePending  = 16.dp
+private val ConnectorWidth   = 2.dp
+private val ColumnWidth      = 36.dp
+
+// ── Main composable ───────────────────────────────────────────────────────────
 
 @Composable
 fun PhaseTimeline(
     transaction: Transaction,
-    phase4Records: List<PhaseRecord>,
-    onTrack4Click: ((PhaseRecord) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val phases = TransactionPhase.entries
 
     Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         phases.forEachIndexed { index, phase ->
-            val tlStatus = phase.resolveStatus(transaction)
-            val showTracks = phase == TransactionPhase.PHASE_4_GOV_AGENCIES
-                    && phase4Records.isNotEmpty()
-                    && tlStatus == TlStatus.IN_PROGRESS
+            val tlStatus  = phase.resolveStatus(transaction)
+            val isLast    = index == phases.size - 1
 
-            Row(verticalAlignment = Alignment.Top) {
-                // Left: dot + connector
+            val connectorColor = when (tlStatus) {
+                TlStatus.DONE        -> CustomsColors.OnTime
+                TlStatus.IN_PROGRESS -> MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+                TlStatus.PENDING     -> MaterialTheme.colorScheme.outlineVariant
+            }
+
+            // Highlight row for active phase
+            val rowBackground = if (tlStatus == TlStatus.IN_PROGRESS)
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.04f)
+            else Color.Transparent
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(rowBackground, RoundedCornerShape(12.dp)),
+                verticalAlignment = Alignment.Top,
+            ) {
+                // ── Left column: node + connector ────────────────────────────
                 Column(
-                    modifier            = Modifier.width(28.dp),
+                    modifier            = Modifier.width(ColumnWidth),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(if (tlStatus == TlStatus.IN_PROGRESS) 14.dp else 10.dp)
-                            .background(tlStatus.dotColor(), CircleShape),
-                    )
-                    if (index < phases.size - 1) {
-                        val connectorHeight =
-                            if (showTracks) (phase4Records.size * 44 + 8).dp else 20.dp
+                    Spacer(Modifier.height(2.dp))
+                    PhaseNode(status = tlStatus)
+                    if (!isLast) {
                         Box(
                             modifier = Modifier
-                                .width(2.dp)
-                                .height(connectorHeight)
-                                .background(MaterialTheme.colorScheme.outlineVariant),
+                                .width(ConnectorWidth)
+                                .height(24.dp)
+                                .background(
+                                    color = connectorColor,
+                                    shape = RoundedCornerShape(1.dp),
+                                ),
                         )
                     }
                 }
 
-                Spacer(Modifier.width(10.dp))
-
-                // Right: phase label + optional tracks
+                // ── Right column: label + badge ──────────────────────────────
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(bottom = 8.dp),
+                        .padding(start = 6.dp, bottom = 10.dp, top = 2.dp, end = 8.dp),
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier          = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text(
-                            text  = "المرحلة ${phase.number}: ${phase.labelAr}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = if (tlStatus == TlStatus.IN_PROGRESS) FontWeight.Bold else FontWeight.Normal,
-                            color = if (tlStatus == TlStatus.PENDING)
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            else
-                                MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Text(
-                            text  = when (tlStatus) {
-                                TlStatus.DONE        -> "✓ مكتملة"
-                                TlStatus.IN_PROGRESS -> "⟳ جارية"
-                                TlStatus.PENDING     -> "○ معلقة"
+                            text       = "المرحلة ${phase.number}: ${phase.labelAr}",
+                            style      = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (tlStatus == TlStatus.IN_PROGRESS) FontWeight.Bold
+                                         else FontWeight.Normal,
+                            color      = when (tlStatus) {
+                                TlStatus.DONE        -> MaterialTheme.colorScheme.onSurface
+                                TlStatus.IN_PROGRESS -> MaterialTheme.colorScheme.onSurface
+                                TlStatus.PENDING     -> MaterialTheme.colorScheme.onSurfaceVariant
                             },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = tlStatus.dotColor(),
+                            modifier   = Modifier.weight(1f),
                         )
-                    }
-
-                    if (showTracks) {
-                        Spacer(Modifier.height(6.dp))
-                        phase4Records.sortedBy { it.subPhase }.forEach { track ->
-                            TrackRow(track = track, onClick = onTrack4Click?.let { cb -> { cb(track) } })
-                        }
+                        Spacer(Modifier.width(6.dp))
+                        StatusBadge(status = tlStatus)
                     }
                 }
             }
@@ -133,58 +132,88 @@ fun PhaseTimeline(
     }
 }
 
-@Composable
-private fun TrackRow(track: PhaseRecord, onClick: (() -> Unit)?) {
-    val trackColor: Color = when {
-        track.status == PhaseStatus.DONE    -> CustomsColors.OnTime
-        track.status == PhaseStatus.BLOCKED -> CustomsColors.Overdue
-        track.isOverSla                     -> CustomsColors.Overdue
-        else                                -> CustomsColors.Military
-    }
+// ── Phase node ────────────────────────────────────────────────────────────────
 
-    Row(
+@Composable
+private fun PhaseNode(status: TlStatus) {
+    when (status) {
+        TlStatus.DONE -> {
+            Box(
+                modifier         = Modifier
+                    .size(NodeSizeDone)
+                    .background(CustomsColors.OnTime, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector        = Icons.Default.Check,
+                    contentDescription = null,
+                    tint               = Color.White,
+                    modifier           = Modifier.size(13.dp),
+                )
+            }
+        }
+
+        TlStatus.IN_PROGRESS -> {
+            // Outer glow ring + inner filled circle
+            Box(
+                modifier         = Modifier.size(NodeSizeActive + 6.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(NodeSizeActive + 6.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                            shape = CircleShape,
+                        )
+                )
+                Box(
+                    modifier = Modifier
+                        .size(NodeSizeActive)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape),
+                )
+            }
+        }
+
+        TlStatus.PENDING -> {
+            Box(
+                modifier = Modifier
+                    .size(NodeSizePending)
+                    .border(1.5.dp, Color(0xFFBDBDBD), CircleShape),
+            )
+        }
+    }
+}
+
+// ── Status badge ──────────────────────────────────────────────────────────────
+
+@Composable
+private fun StatusBadge(status: TlStatus) {
+    val bgColor = when (status) {
+        TlStatus.DONE        -> CustomsColors.OnTime.copy(alpha = 0.12f)
+        TlStatus.IN_PROGRESS -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+        TlStatus.PENDING     -> Color(0xFFBDBDBD).copy(alpha = 0.18f)
+    }
+    val fgColor = when (status) {
+        TlStatus.DONE        -> CustomsColors.OnTime
+        TlStatus.IN_PROGRESS -> MaterialTheme.colorScheme.primary
+        TlStatus.PENDING     -> Color(0xFF9E9E9E)
+    }
+    val label = when (status) {
+        TlStatus.DONE        -> "مكتملة"
+        TlStatus.IN_PROGRESS -> "جارية"
+        TlStatus.PENDING     -> "معلقة"
+    }
+    Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+            .background(bgColor, RoundedCornerShape(4.dp))
+            .padding(horizontal = 7.dp, vertical = 3.dp),
     ) {
         Text(
-            text  = when (track.status) {
-                PhaseStatus.DONE    -> "✓"
-                PhaseStatus.BLOCKED -> "✗"
-                else                -> "⟳"
-            },
-            color      = trackColor,
-            style      = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Bold,
+            text       = label,
+            style      = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color      = fgColor,
         )
-
-        Column(Modifier.weight(1f)) {
-            Text(
-                text  = track.assignedToEntity.labelAr,
-                style = MaterialTheme.typography.bodySmall,
-            )
-            val days = track.daysElapsed
-            val sla  = track.slaTargetDays
-            val daysLabel = when {
-                track.status == PhaseStatus.DONE     -> "مكتمل"
-                days == null                         -> track.status.labelAr()
-                track.isOverSla && sla != null       -> "متأخر ${days - sla} يوم عن الهدف ($days / $sla يوم)"
-                sla != null                          -> "$days / $sla يوم"
-                else                                 -> "$days يوم"
-            }
-            Text(daysLabel, style = MaterialTheme.typography.labelSmall, color = trackColor)
-        }
-
-        if (onClick != null && track.status != PhaseStatus.DONE) {
-            Icon(
-                imageVector        = Icons.Default.Edit,
-                contentDescription = "تعديل",
-                modifier           = Modifier.size(16.dp),
-                tint               = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }

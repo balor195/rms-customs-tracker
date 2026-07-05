@@ -7,13 +7,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.rms.customs.data.local.dao.ActivityLogDao
 import com.rms.customs.data.local.dao.DocumentDao
 import com.rms.customs.data.local.dao.NotificationDao
-import com.rms.customs.data.local.dao.PhaseRecordDao
 import com.rms.customs.data.local.dao.SlaConfigDao
 import com.rms.customs.data.local.dao.TransactionDao
 import com.rms.customs.data.local.dao.UserDao
 import com.rms.customs.data.local.entity.ActivityLogEntity
 import com.rms.customs.data.local.entity.NotificationEntity
-import com.rms.customs.data.local.entity.PhaseRecordEntity
 import com.rms.customs.data.local.entity.SlaConfigEntity
 import com.rms.customs.data.local.entity.TransactionDocumentEntity
 import com.rms.customs.data.local.entity.TransactionEntity
@@ -22,19 +20,17 @@ import com.rms.customs.data.local.entity.UserEntity
 @Database(
     entities = [
         TransactionEntity::class,
-        PhaseRecordEntity::class,
         TransactionDocumentEntity::class,
         ActivityLogEntity::class,
         SlaConfigEntity::class,
         UserEntity::class,
         NotificationEntity::class,
     ],
-    version = 2,
+    version = 6,
     exportSchema = false,
 )
 abstract class CustomsDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
-    abstract fun phaseRecordDao(): PhaseRecordDao
     abstract fun documentDao(): DocumentDao
     abstract fun activityLogDao(): ActivityLogDao
     abstract fun slaConfigDao(): SlaConfigDao
@@ -59,6 +55,81 @@ abstract class CustomsDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE transactions ADD COLUMN shipmentStatus TEXT NOT NULL DEFAULT 'EXPECTED'")
                 // Create index declared on the entity — must match or Room schema validation crashes
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_accreditationNumber` ON `transactions` (`accreditationNumber`)")
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Phase 4 (gov-agency parallel tracks) removed — its supporting table goes with it.
+                db.execSQL("DROP TABLE IF EXISTS phase_records")
+
+                // Statuses/phase numbers were renumbered when phases 2-4 were dropped and a
+                // new final phase was added — clear seeded SLA config so it reseeds cleanly.
+                db.execSQL("DELETE FROM sla_configs")
+
+                // New tender-intake fields
+                db.execSQL("ALTER TABLE transactions ADD COLUMN weightKg REAL")
+                db.execSQL("ALTER TABLE transactions ADD COLUMN isRefrigerated INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // العمر الافتراضي — free-text shelf life, entered only for المستهلكات transactions
+                db.execSQL("ALTER TABLE transactions ADD COLUMN defaultShelfLife TEXT")
+            }
+        }
+
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // department becomes nullable — ADMIN/CLEARANCE/WAREHOUSE no longer belong to a division.
+                // SQLite can't drop a NOT NULL constraint via ALTER TABLE, so the table is recreated.
+                db.execSQL(
+                    """
+                    CREATE TABLE users_new (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        username TEXT NOT NULL,
+                        displayName TEXT NOT NULL,
+                        displayNameAr TEXT NOT NULL,
+                        role TEXT NOT NULL,
+                        department TEXT,
+                        passwordHash TEXT NOT NULL,
+                        isActive INTEGER NOT NULL,
+                        lastLoginAt INTEGER
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO users_new
+                    SELECT id, username, displayName, displayNameAr, role, department, passwordHash, isActive, lastLoginAt
+                    FROM users
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE users")
+                db.execSQL("ALTER TABLE users_new RENAME TO users")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_users_username` ON `users` (`username`)")
+
+                // Roles that see every division no longer carry a fixed one.
+                db.execSQL("UPDATE users SET department = NULL WHERE role IN ('ADMIN', 'CLEARANCE', 'WAREHOUSE')")
+            }
+        }
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Phase 3 (Transit & Receipt) merged into Phase 4 (Warehouse Transfer Confirmation) —
+                // they described the same real-world event. Remap any transactions sitting in the
+                // removed transit sub-statuses forward to financial settlement (the next remaining phase).
+                db.execSQL(
+                    "UPDATE transactions SET currentStatus = 'FINANCIAL_SETTLEMENT_PENDING' " +
+                    "WHERE currentStatus IN ('IN_TRANSIT', 'RECEIVED_AT_WAREHOUSE', 'INSPECTION_COMPLETE')"
+                )
+                // Old phase enum constants renamed/renumbered.
+                db.execSQL("UPDATE transactions SET currentPhase = 'PHASE_3_FINANCIAL' WHERE currentPhase IN ('PHASE_3_TRANSIT', 'PHASE_4_FINANCIAL')")
+                db.execSQL("UPDATE transactions SET currentPhase = 'PHASE_4_WAREHOUSE_CONFIRMATION' WHERE currentPhase = 'PHASE_5_WAREHOUSE_CONFIRMATION'")
+
+                // SLA sub-phase numbering shifted (old phase 3 removed, old phase 4 is now phase 3) — reseed cleanly.
+                db.execSQL("DELETE FROM sla_configs")
             }
         }
     }

@@ -1,7 +1,6 @@
 package com.rms.customs.data.export
 
 import android.content.Context
-import com.rms.customs.domain.model.PhaseRecord
 import com.rms.customs.domain.model.Transaction
 import com.rms.customs.domain.model.enums.Department
 import com.rms.customs.domain.model.enums.ShipmentStatus
@@ -10,7 +9,6 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,25 +23,17 @@ class CsvExporter @Inject constructor(
 
     // ── Weekly operational report ─────────────────────────────────────────────
 
-    fun generateWeekly(txs: List<Transaction>, phases: List<PhaseRecord>): File {
-        val now        = System.currentTimeMillis()
-        val overdueMap = phases.groupBy { it.transactionId }
-        val file       = File(reportsDir(), "rms_weekly_${ts()}.csv")
+    fun generateWeekly(txs: List<Transaction>): File {
+        val file = File(reportsDir(), "rms_weekly_${ts()}.csv")
 
         file.bufferedWriter(Charsets.UTF_8).use { w ->
             w.write("﻿") // BOM for Excel UTF-8
             w.write(
                 "رقم الاعتماد,رقم المعاملة,المورد,الضابط المسؤول,الشعبة," +
                 "المرحلة الحالية,الحالة,حالة الشحنة,الأولوية," +
-                "أيام آخر تحديث,حالة SLA,تاريخ الإنشاء\n"
+                "أيام آخر تحديث,تاريخ الإنشاء\n"
             )
             txs.filter { it.isActive }.forEach { tx ->
-                val overdueDays = overdueMap[tx.id]?.mapNotNull { p ->
-                    p.startedAt?.let {
-                        TimeUnit.MILLISECONDS.toDays(now - it).toInt() - (p.slaTargetDays ?: 0)
-                    }
-                }?.filter { it > 0 }?.maxOrNull() ?: 0
-                val sla = if (overdueDays > 0) "متأخر $overdueDays يوم" else "في الوقت"
                 w.write(
                     "${(tx.accreditationNumber ?: "").csvSafe()}," +
                     "${tx.transactionRef}," +
@@ -55,7 +45,6 @@ class CsvExporter @Inject constructor(
                     "${tx.shipmentStatus.labelAr.csvSafe()}," +
                     "${tx.priority.name}," +
                     "${tx.daysSinceUpdate}," +
-                    "${sla.csvSafe()}," +
                     "${dateFmt(tx.createdAt)}\n"
                 )
             }
@@ -73,7 +62,7 @@ class CsvExporter @Inject constructor(
             w.write(
                 "رقم المعاملة,رقم الاعتماد,المورد,عنوان العطاء,الشعبة,الجهة المستفيدة," +
                 "الضابط المسؤول,المرحلة,الحالة,الأولوية,حالة الشحنة," +
-                "الوصول المتوقع,الوصول الفعلي,رقم بوليصة الشحن," +
+                "الوصول المتوقع,الوصول الفعلي,رقم بوليصة الشحن,الوزن (كغم),نوع الشحنة,العمر الافتراضي," +
                 "قيمة العطاء (JOD),تاريخ الإنشاء,تاريخ الإغلاق,أيام الإنجاز\n"
             )
             txs.forEach { tx ->
@@ -94,6 +83,9 @@ class CsvExporter @Inject constructor(
                     "${tx.expectedArrivalDate?.let { dateFmt(it) } ?: ""}," +
                     "${tx.actualArrivalDate?.let { dateFmt(it) } ?: ""}," +
                     "${(tx.billOfLadingNumber ?: "").csvSafe()}," +
+                    "${tx.weightKg?.let { "%.2f".format(it) } ?: ""}," +
+                    "${(if (tx.isRefrigerated) "مبرّدة" else "غير مبرّدة").csvSafe()}," +
+                    "${(tx.defaultShelfLife ?: "").csvSafe()}," +
                     "${"%.2f".format(tx.totalValue ?: 0.0)}," +
                     "${dateFmt(tx.createdAt)}," +
                     "$closedDate," +

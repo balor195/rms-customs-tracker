@@ -4,9 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rms.customs.domain.model.ActivityLog
-import com.rms.customs.domain.model.PhaseRecord
 import com.rms.customs.domain.model.Transaction
-import com.rms.customs.domain.model.enums.PhaseStatus
 import com.rms.customs.domain.model.enums.ShipmentStatus
 import com.rms.customs.domain.model.enums.TransactionStatus
 import com.rms.customs.domain.repository.TransactionRepository
@@ -38,9 +36,6 @@ class TransactionDetailViewModel @Inject constructor(
 
     val transaction: StateFlow<Transaction?> = transactionRepository.observeById(txId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
-
-    val phaseRecords: StateFlow<List<PhaseRecord>> = transactionRepository.observePhaseRecords(txId)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val activityLog: StateFlow<List<ActivityLog>> = transactionRepository.observeActivityLog(txId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -88,27 +83,6 @@ class TransactionDetailViewModel @Inject constructor(
             val tx = transaction.value ?: return@launch
             transactionRepository.update(
                 tx.copy(notes = notes.ifBlank { null }, updatedAt = System.currentTimeMillis())
-            )
-        }
-    }
-
-    fun updatePhaseRecord(record: PhaseRecord) {
-        viewModelScope.launch { transactionRepository.updatePhaseRecord(record) }
-    }
-
-    fun completePhaseRecord(phaseRecordId: UUID, actorUserId: UUID) {
-        viewModelScope.launch {
-            _transitionState.value = TransitionUiState.Loading
-            runCatching { transactionRepository.completePhaseRecord(phaseRecordId, actorUserId) }
-                .onSuccess { _transitionState.value = TransitionUiState.Success }
-                .onFailure { _transitionState.value = TransitionUiState.Error(it.message ?: "خطأ") }
-        }
-    }
-
-    fun blockPhaseRecord(record: PhaseRecord, reason: String) {
-        viewModelScope.launch {
-            transactionRepository.updatePhaseRecord(
-                record.copy(status = PhaseStatus.BLOCKED, blockerReason = reason)
             )
         }
     }

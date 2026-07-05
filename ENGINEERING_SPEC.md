@@ -2,7 +2,7 @@
 ## RMS Customs Clearance Transaction Tracker
 
 **Document version:** 1.0  
-**Date:** 2026-06-29  
+**Date:** 2026-06-29 (last updated 2026-07-05 — workflow/roles/schema overhaul, see inline `2026-07-05` annotations and `PROGRESS.md`)  
 **Stack:** Android (Kotlin) + Python (FastAPI)
 
 ---
@@ -55,16 +55,15 @@ D:\Claude Workspace\Customs\
         ├── MainActivity.kt         ← Single-activity host
         ├── domain\
         │   ├── model\              ← Pure Kotlin data classes (no Android deps)
-        │   │   ├── Transaction.kt
-        │   │   ├── PhaseRecord.kt
+        │   │   ├── Transaction.kt          ← includes weightKg, isRefrigerated, defaultShelfLife
         │   │   ├── User.kt
         │   │   ├── SlaConfig.kt
         │   │   ├── AppNotification.kt
         │   │   ├── TransactionDocument.kt
         │   │   ├── ActivityLog.kt
-        │   │   └── enums\          ← TransactionPhase, TransactionStatus,
-        │   │                         UserRole, Department, Priority,
-        │   │                         AssignedEntity, PhaseStatus, etc.
+        │   │   └── enums\          ← TransactionPhase (5), TransactionStatus,
+        │   │                         UserRole (incl. CLEARANCE/WAREHOUSE),
+        │   │                         Department, Priority, PhaseStatus, etc.
         │   ├── repository\         ← Repository interfaces (contracts)
         │   ├── statemachine\
         │   │   └── TransactionStateMachine.kt
@@ -73,10 +72,10 @@ D:\Claude Workspace\Customs\
         │       ├── SetupAdminUseCase.kt
         │       ├── PasswordHasher.kt
         │       ├── SlaConfigDefaults.kt
-        │       └── Phase4Tracks.kt
+        │       └── TransactionAccessScope.kt  ← Transaction.isVisibleTo(user) — division/role scoping
         ├── data\
         │   ├── local\
-        │   │   ├── db\CustomsDatabase.kt   ← Room @Database (v1, 7 entities)
+        │   │   ├── db\CustomsDatabase.kt   ← Room @Database (v4, 6 entities)
         │   │   ├── entity\                 ← Room @Entity classes
         │   │   ├── dao\                    ← Room @Dao interfaces
         │   │   └── SessionStore.kt         ← EncryptedSharedPreferences session
@@ -94,7 +93,6 @@ D:\Claude Workspace\Customs\
         │   ├── NetworkModule.kt
         │   └── RepositoryModule.kt
         ├── work\
-        │   ├── SlaCheckerWorker.kt         ← Periodic SLA alerter (6 h)
         │   └── SyncWorker.kt              ← Periodic sync (15 min)
         ├── notifications\
         │   └── CustomsNotificationManager.kt
@@ -182,20 +180,33 @@ Repository (interface in domain, impl in data)
 
 ### Transaction
 
+*(Updated 2026-07-05 — added `weightKg`, `isRefrigerated`, `defaultShelfLife`; `division` and `beneficiary` were already present from an earlier RMS-specific pass.)*
+
 ```kotlin
 data class Transaction(
     val id: UUID,
     val transactionRef: String,       // "RMS-2026-0042"
     val title: String,
+    val division: Department?,        // شعبة الدواء / المستهلكات / الأجهزة
+    val accreditationNumber: String?,
+    val billOfLadingNumber: String?,
+    val responsibleOfficer: String,
+    val beneficiary: Beneficiary?,    // RMS or Bank
     val tenderRef: String?,
     val contractRef: String?,
     val supplierName: String,
     val totalValue: Double?,
     val currency: String,             // default "JOD"
+    val expectedArrivalDate: Long?,
+    val actualArrivalDate: Long?,
+    val shipmentStatus: ShipmentStatus,
+    val weightKg: Double?,            // وزن الشحنة (كغم)
+    val isRefrigerated: Boolean,      // هل الشحنة مبرّدة
+    val defaultShelfLife: String?,    // العمر الافتراضي — MEDICAL_CONSUMABLES only
     val currentPhase: TransactionPhase,
     val currentStatus: TransactionStatus,
     val exceptionState: TransactionStatus?,  // BLOCKED | ON_HOLD | DISPUTED
-    val priority: Priority,
+    val priority: Priority,           // URGENT requires beneficiary=RMS && isRefrigerated
     val createdAt: Long,              // epoch ms
     val createdByUserId: UUID,
     val updatedAt: Long,              // epoch ms — sync cursor
@@ -206,23 +217,22 @@ data class Transaction(
 
 Computed properties: `isActive`, `isBlocked`, `daysSinceUpdate`.
 
-### PhaseRecord
-
-One record per sub-phase (e.g., "4.1 Armed Forces", "4.2 Customs", "4.3 JFDA"). Tracks start time, completion time, SLA target, blocker reason, and the user who completed it.
+Division/role visibility is computed by `Transaction.isVisibleTo(user: User)` (`domain/usecase/TransactionAccessScope.kt`), shared by the list, dashboard, and detail-screen guard.
 
 ### User
+
+*(Updated 2026-07-05 — `department` is now nullable; `ADMIN`/`CLEARANCE`/`WAREHOUSE` accounts have `department = null`. `passwordHash`/`createdAt` live on `UserEntity`, not the domain model.)*
 
 ```kotlin
 data class User(
     val id: UUID,
-    val displayNameAr: String,
-    val displayNameEn: String,
     val username: String,
-    val passwordHash: String,         // PBKDF2-SHA256
+    val displayName: String,
+    val displayNameAr: String,
     val role: UserRole,
-    val department: Department,
-    val isActive: Boolean,
-    val createdAt: Long,
+    val department: Department?,      // null for ADMIN/CLEARANCE/WAREHOUSE
+    val isActive: Boolean = true,
+    val lastLoginAt: Long? = null,
 )
 ```
 
@@ -236,59 +246,66 @@ Stores SLA alert notifications in-app. Fields: `type` (SLA_BREACH / SLA_ESCALATE
 
 ### Key Enums
 
-**TransactionPhase** — 7 values with `number`, `labelAr`, `labelEn`.
+*(Updated 2026-07-05, twice — phase/status/role model overhauled 7→5 phases, then Phase 3 "Transit & Receipt" and Phase 5 "Transferred to Warehouses" were merged (they described the same event) leaving 4 phases. See `PROGRESS.md` → "Workflow, Roles & Field Overhaul" for the full rationale.)*
 
-**TransactionStatus** — 19 values:
+**TransactionPhase** — 4 values with `number`, `labelAr`, `labelEn` (reduced from 7, then 5):
+`PHASE_1_TENDER`, `PHASE_2_CLEARANCE`, `PHASE_3_FINANCIAL`, `PHASE_4_WAREHOUSE_CONFIRMATION`.
+
+**TransactionStatus** — 10 values (reduced from 19, then 13; in addition to the earlier removals, `IN_TRANSIT`, `RECEIVED_AT_WAREHOUSE`, `INSPECTION_COMPLETE` were removed — the separate `shipmentStatus` field already tracks physical arrival independently):
 
 ```
 DRAFT → TENDER_PREPARATION → TENDER_PUBLISHED →
-EVALUATION_IN_PROGRESS → CONTRACT_PENDING_SIGNATURE → CONTRACT_SIGNED →
-CLEARANCE_DOCS_PREPARATION → DECLARATION_SUBMITTED →
-GOV_PROCESSING → GOV_APPROVED →
-FINAL_RELEASE_ISSUED →
-IN_TRANSIT → RECEIVED_AT_WAREHOUSE → INSPECTION_COMPLETE →
-FINANCIAL_SETTLEMENT_PENDING → CLOSED
+CLEARANCE_ISSUED →
+FINANCIAL_SETTLEMENT_PENDING → CLOSED →
+TRANSFERRED_TO_WAREHOUSE
 + BLOCKED | ON_HOLD | DISPUTED (exception overlays)
 ```
 
-**UserRole** — ADMIN / COORDINATOR / SUPERVISOR / VIEWER with computed permission properties (`canWrite`, `canApprove`, `canManageUsers`, `canExport`).
+**UserRole** — `ADMIN` / `CLEARANCE` (renamed from `COORDINATOR`) / `WAREHOUSE` (new) / `SUPERVISOR` / `TENDER_OFFICER` ("ضابط العطاء", added 2026-07-05) / `VIEWER`, with computed permission properties: `canWrite`, `canCreateTransaction` (ADMIN/SUPERVISOR/TENDER_OFFICER), `canApprove`, `canManageUsers`, `canExport`, `canMarkClearanceDone` (ADMIN/CLEARANCE only), `canMarkWarehouseTransferred` (ADMIN/WAREHOUSE only), `seesAllDivisions` (ADMIN/CLEARANCE/WAREHOUSE — these three also carry `department = null`).
 
-**Department** — PHARMACY, MEDICAL_EQUIPMENT, DENTAL, LABORATORY, RADIOLOGY, ADMINISTRATION.
+**Department** — `PHARMACY` (شعبة الدواء), `MEDICAL_CONSUMABLES` (شعبة المستهلكات الطبية), `MEDICAL_DEVICES` (شعبة الأجهزة الطبية). `SUPERVISOR`/`VIEWER` accounts are confined to their own division.
 
-**Priority** — LOW, NORMAL, HIGH, CRITICAL.
+**Priority** — `NORMAL`, `HIGH`, `URGENT`. `URGENT` is only selectable when `beneficiary == RMS && isRefrigerated`.
 
 ---
 
 ## 5. State Machine
 
+*(Rewritten 2026-07-05, twice — first for the 5-phase model, then simplified again to 4 phases when `IN_TRANSIT`/`RECEIVED_AT_WAREHOUSE`/`INSPECTION_COMPLETE` were removed — see `PROGRESS.md` for the full before/after.)*
+
 `TransactionStateMachine` (`domain/statemachine/`) enforces all lifecycle rules.
 
 **Transition table (forward):**
 ```
-DRAFT → TENDER_PREPARATION → TENDER_PUBLISHED → EVALUATION_IN_PROGRESS
-→ CONTRACT_PENDING_SIGNATURE → CONTRACT_SIGNED → CLEARANCE_DOCS_PREPARATION
-→ DECLARATION_SUBMITTED → GOV_PROCESSING → GOV_APPROVED
-→ FINAL_RELEASE_ISSUED → IN_TRANSIT → RECEIVED_AT_WAREHOUSE
-→ INSPECTION_COMPLETE → FINANCIAL_SETTLEMENT_PENDING → CLOSED
+DRAFT → TENDER_PREPARATION → TENDER_PUBLISHED → CLEARANCE_ISSUED
+→ FINANCIAL_SETTLEMENT_PENDING → CLOSED → TRANSFERRED_TO_WAREHOUSE
 ```
 
-**Exception state recovery:** BLOCKED and ON_HOLD can transition to any of the active workflow states. DISPUTED can only transition to FINANCIAL_SETTLEMENT_PENDING.
+**Exception state recovery:** BLOCKED and ON_HOLD can transition to `TENDER_PREPARATION` or `FINANCIAL_SETTLEMENT_PENDING`. DISPUTED can only transition to `FINANCIAL_SETTLEMENT_PENDING`.
 
-**Hard gates (enforced in `checkHardGates()`):**
+**Hard gate (enforced in `checkHardGates()`):**
 
 | Gate | Rule |
 |---|---|
-| Gate 1 | Cannot reach `DECLARATION_SUBMITTED` unless `CONTRACT_SIGNED` has been passed |
-| Gate 2 | Cannot reach `IN_TRANSIT` unless current status is `FINAL_RELEASE_ISSUED` |
-| Gate 3 | Cannot reach `GOV_APPROVED` unless all three Phase 4 PhaseRecords are `DONE` (enforced in repository layer) |
+| Gate | Cannot reach `TRANSFERRED_TO_WAREHOUSE` unless current status is `CLOSED` |
 
-The `advance()` method returns `TransitionResult.Success(newStatus)` or `TransitionResult.Failure(reason)` — never throws.
+Reaching `TRANSFERRED_TO_WAREHOUSE` is the transaction's closing action (`isTerminal`), and its status badge renders in red (`CustomsColors.Overdue`) rather than the neutral grey used for the intermediate `CLOSED` status.
+
+The `advance()` method returns `TransitionResult.Success(newStatus)` or `TransitionResult.Failure(reason)` — never throws. Permission checks for who *may* trigger `CLEARANCE_ISSUED` (`CLEARANCE`/`ADMIN` only) and `TRANSFERRED_TO_WAREHOUSE` (`WAREHOUSE`/`ADMIN` only) are enforced at the UI layer (`TransactionDetailScreen`), not inside the state machine itself, consistent with how `canWrite` is already gated elsewhere.
 
 ---
 
 ## 6. Local Database Schema
 
-Room database name: `customs_tracker.db`, version 1 (schema-only; no migrations yet).
+Room database name: `customs_tracker.db`, currently **version 6**. Migrations (mostly additive `ALTER TABLE`, per the "additive-only schema" architecture decision — the one exception is noted below):
+
+| Migration | Change |
+|---|---|
+| 1 → 2 | Added `division`, `accreditationNumber`, `billOfLadingNumber`, `responsibleOfficer`, `beneficiary`, `expectedArrivalDate`, `actualArrivalDate`, `shipmentStatus` to `transactions` |
+| 2 → 3 *(2026-07-05)* | **Dropped** `phase_records` (Phase-4 subsystem removed); cleared `sla_configs` (renumbered, reseeded on next open); added `weightKg`, `isRefrigerated` to `transactions` |
+| 3 → 4 *(2026-07-05)* | Added `defaultShelfLife` to `transactions` |
+| 4 → 5 *(2026-07-05)* | **Recreated** `users` (SQLite can't drop a `NOT NULL` constraint via `ALTER TABLE`) to make `department` nullable; nulled `department` for existing `ADMIN`/`CLEARANCE`/`WAREHOUSE` rows |
+| 5 → 6 *(2026-07-05)* | Phases 3/5 merged — remaps any `transactions` rows in the removed `IN_TRANSIT`/`RECEIVED_AT_WAREHOUSE`/`INSPECTION_COMPLETE` statuses forward to `FINANCIAL_SETTLEMENT_PENDING`, and old `currentPhase` enum names to their renumbered equivalents; cleared `sla_configs` again (sub-phase numbering shifted) |
 
 ### Tables
 
@@ -298,11 +315,22 @@ Room database name: `customs_tracker.db`, version 1 (schema-only; no migrations 
 | id | TEXT PK | UUID string |
 | transactionRef | TEXT UNIQUE | e.g., "RMS-2026-0042" |
 | title | TEXT | |
+| division | TEXT? | Department enum — شعبة الدواء / المستهلكات / الأجهزة |
+| accreditationNumber | TEXT? | رقم الاعتماد |
+| billOfLadingNumber | TEXT? | رقم بوليصة الشحن |
+| responsibleOfficer | TEXT | اسم الضابط المسؤول |
+| beneficiary | TEXT? | Beneficiary enum — RMS or Bank |
 | tenderRef | TEXT? | |
 | contractRef | TEXT? | |
 | supplierName | TEXT | |
 | totalValue | REAL? | |
 | currency | TEXT | default "JOD" |
+| expectedArrivalDate | INTEGER? | epoch ms |
+| actualArrivalDate | INTEGER? | epoch ms |
+| shipmentStatus | TEXT | ShipmentStatus enum, default EXPECTED |
+| weightKg | REAL? | *(added 2026-07-05)* وزن الشحنة |
+| isRefrigerated | INTEGER | *(added 2026-07-05)* 0/1 — هل الشحنة مبرّدة |
+| defaultShelfLife | TEXT? | *(added 2026-07-05)* العمر الافتراضي — MEDICAL_CONSUMABLES only |
 | currentPhase | TEXT | enum name |
 | currentStatus | TEXT | enum name |
 | exceptionState | TEXT? | enum name or null |
@@ -313,34 +341,23 @@ Room database name: `customs_tracker.db`, version 1 (schema-only; no migrations 
 | closedAt | INTEGER? | epoch ms |
 | notes | TEXT? | |
 
-#### `phase_records`
-| Column | Type | Notes |
-|---|---|---|
-| id | TEXT PK | UUID string |
-| transactionId | TEXT FK | → transactions.id |
-| phaseNumber | INTEGER | 1–7 |
-| subPhase | TEXT | e.g., "4.1", "4.2", "4.3" |
-| status | TEXT | PhaseStatus enum |
-| assignedToEntity | TEXT | AssignedEntity enum |
-| startedAt | INTEGER? | epoch ms |
-| completedAt | INTEGER? | epoch ms |
-| slaTargetDays | INTEGER? | |
-| blockerReason | TEXT? | |
-| completedByUserId | TEXT? | UUID string |
-| notes | TEXT? | |
+#### `phase_records` *(removed 2026-07-05, migration 2→3)*
+
+> Existed only to track the three Phase-4 gov-agency parallel-approval tracks (Military Command / Customs / JFDA). Since Phase 4 was removed from the workflow, this table — and the entities/DAO/domain model behind it (`PhaseRecordEntity`, `PhaseRecordDao`, `PhaseRecord`, `AssignedEntity`) — was dropped entirely rather than kept unused.
 
 #### `users`
+*(department made nullable 2026-07-05, migration 4→5)*
 | Column | Type | Notes |
 |---|---|---|
 | id | TEXT PK | UUID string |
-| displayNameAr | TEXT | |
-| displayNameEn | TEXT | |
 | username | TEXT UNIQUE | |
-| passwordHash | TEXT | PBKDF2-SHA256 |
+| displayName | TEXT | |
+| displayNameAr | TEXT | |
 | role | TEXT | UserRole enum |
-| department | TEXT | Department enum |
+| department | TEXT? | Department enum, or null for ADMIN/CLEARANCE/WAREHOUSE |
+| passwordHash | TEXT | PBKDF2-SHA256 |
 | isActive | INTEGER | 0/1 |
-| createdAt | INTEGER | epoch ms |
+| lastLoginAt | INTEGER? | epoch ms |
 
 #### `sla_configs`
 | Column | Type | Notes |
@@ -396,13 +413,9 @@ Room database name: `customs_tracker.db`, version 1 (schema-only; no migrations 
 - `getById(id): TransactionEntity?`
 - `insert(entity)` — conflict strategy REPLACE (used by sync)
 - `getModifiedSince(since: Long): List<TransactionEntity>` — sync push cursor
-- `bumpUpdatedAt(id, updatedAt)` — called after any phase record change
+- `bumpUpdatedAt(id, updatedAt)`
 
-**PhaseRecordDao:**
-- `observeForTransaction(txId): Flow<List<PhaseRecordEntity>>`
-- `getAllForTransaction(txId): List<PhaseRecordEntity>` — sync bundle
-- `insert(entity)` — conflict strategy REPLACE
-- `markComplete(id, status, completedAt, userId)`
+> `PhaseRecordDao` (and `countOverdueSla()`, which queried `phase_records` directly) were removed 2026-07-05 along with the table above.
 
 **UserDao:**
 - `findByUsername(username): UserEntity?` — used by login
@@ -442,18 +455,9 @@ Binds all repository interfaces to their implementations via `@Binds @Singleton`
 
 ## 8. Background Workers
 
-Both workers are `@HiltWorker` (dependency injection via `@AssistedInject`). Both are registered in `CustomsApp.kt` on first app launch using `WorkManager.enqueueUniquePeriodicWork`.
+*(`SlaCheckerWorker` was removed 2026-07-05 — it scanned `phase_records`, which only existed for the now-deleted Phase-4 tracks. `SyncWorker` is the only remaining background worker.)*
 
-### SlaCheckerWorker
-
-- **Schedule:** Every 6 hours, any network condition
-- **Work name:** `sla_checker_periodic`
-- **Logic:**
-  1. Loads all active (non-terminal, non-exception) phase records
-  2. For each, computes `daysSinceStart`
-  3. Compares against `SlaConfig.targetDays` and `escalationAfterDays`
-  4. If breached/escalated and no notification in last 24h for this tx+type → creates `AppNotification` in DB and posts Android notification
-- **Deduplication:** `notificationRepository.countRecentForTx(txId, type, since24h) > 0` skips
+`SyncWorker` is a `@HiltWorker` (dependency injection via `@AssistedInject`), registered in `CustomsApp.kt` on first app launch using `WorkManager.enqueueUniquePeriodicWork`.
 
 ### SyncWorker
 
@@ -468,19 +472,18 @@ Both workers are `@HiltWorker` (dependency injection via `@AssistedInject`). Bot
 
 ### Strategy: Incremental cursor-based sync (no outbox table)
 
-**Cursor:** The `updatedAt` field on `TransactionEntity` (epoch ms) serves as the sync watermark. Phase record changes bubble up via `TransactionDao.bumpUpdatedAt()`, so any sub-record change makes the parent transaction eligible for push.
+**Cursor:** The `updatedAt` field on `TransactionEntity` (epoch ms) serves as the sync watermark, bumped via `TransactionDao.bumpUpdatedAt()`.
 
 **Push (device → server):**
 1. `TransactionDao.getModifiedSince(lastSyncMs)` — all transactions changed since last successful sync
-2. For each, `PhaseRecordDao.getAllForTransaction()` — bundled phase records
-3. `POST /api/v1/sync/push` with a `SyncPushRequest` payload
-4. Server applies last-write-wins upsert (`dto.updated_at >= tx.updated_at`)
-5. Server stamps `server_updated_at = now_ms` on every accepted record
+2. `POST /api/v1/sync/push` with a `SyncPushRequest` payload
+3. Server applies last-write-wins upsert (`dto.updated_at >= tx.updated_at`)
+4. Server stamps `server_updated_at = now_ms` on every accepted record
 
 **Pull (server → device):**
 1. `GET /api/v1/sync/pull?since={lastSyncMs}&device_id={deviceId}`
 2. Server returns all transactions where `server_updated_at > since`
-3. Device upserts via `TransactionDao.insert()` (REPLACE strategy) + `PhaseRecordDao.insert()`
+3. Device upserts via `TransactionDao.insert()` (REPLACE strategy)
 4. Updates `last_sync_ms` in SharedPreferences to `serverTimeMs` from response
 
 **SharedPreferences:**
@@ -525,12 +528,12 @@ Converter: `kotlinx.serialization` via `asConverterFactory("application/json; ch
 ### DTO ↔ Entity Mapping
 
 `SyncDtos.kt` contains extension functions:
-- `TransactionEntity.toSyncDto(phases: List<PhaseRecordEntity>): TransactionSyncDto`
-- `PhaseRecordEntity.toSyncDto(): PhaseRecordSyncDto`
+- `TransactionEntity.toSyncDto(): TransactionSyncDto`
 - `TransactionSyncDto.toEntity(): TransactionEntity`
-- `PhaseRecordSyncDto.toEntity(): PhaseRecordEntity`
 
-Field names use `@SerialName("snake_case")` to match the Python backend convention.
+*(`PhaseRecordSyncDto` and its mappers were removed 2026-07-05 along with `phase_records`.)*
+
+Field names use `@SerialName("snake_case")` to match the Python backend convention. `TransactionSyncDto` includes `weight_kg`, `is_refrigerated`, and `default_shelf_life` (added 2026-07-05) — note the Python backend's `models.py`/`schemas.py` have **not** been updated to accept these fields yet, since the FastAPI sync backend is still an unwired Phase-9 placeholder (see §13).
 
 ---
 
@@ -619,14 +622,15 @@ Returns `{"status": "ok", "service": "rms-customs-sync"}`.
       "transaction_ref": "RMS-2026-0042",
       "title": "...",
       "supplier_name": "...",
-      "current_phase": "PHASE_4_GOV_AGENCIES",
-      "current_status": "GOV_PROCESSING",
+      "current_phase": "PHASE_2_CLEARANCE",
+      "current_status": "CLEARANCE_ISSUED",
       "priority": "NORMAL",
+      "weight_kg": 120.5,
+      "is_refrigerated": false,
       "created_at": 1750000000000,
       "created_by_user_id": "uuid",
       "updated_at": 1751234567000,
-      "currency": "JOD",
-      "phase_records": [...]
+      "currency": "JOD"
     }
   ]
 }
@@ -634,7 +638,9 @@ Returns `{"status": "ok", "service": "rms-customs-sync"}`.
 
 **Response:** `{"accepted": 3}` — count of records updated on server.
 
-**Logic:** For each transaction in the request, if `dto.updated_at >= server.updated_at` (or record is new), upsert the transaction and all its phase records. Set `server_updated_at = now_ms`.
+**Logic:** For each transaction in the request, if `dto.updated_at >= server.updated_at` (or record is new), upsert the transaction. Set `server_updated_at = now_ms`.
+
+> ⚠️ The `weight_kg`/`is_refrigerated`/`default_shelf_life` fields (added 2026-07-05) and the `phase_records` removal are reflected on the Android side only — `backend/models.py` and `backend/schemas.py` have not been updated, since this backend is an unwired Phase-9 placeholder (see §17 for how to run it, but it is not part of the shipped app flow).
 
 #### `GET /api/v1/sync/pull?since=<ms>&device_id=<uuid>`
 

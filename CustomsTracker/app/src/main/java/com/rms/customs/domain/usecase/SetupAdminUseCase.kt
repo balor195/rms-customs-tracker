@@ -1,7 +1,6 @@
 package com.rms.customs.domain.usecase
 
 import com.rms.customs.domain.model.User
-import com.rms.customs.domain.model.enums.Department
 import com.rms.customs.domain.model.enums.UserRole
 import com.rms.customs.domain.repository.UserRepository
 import java.util.UUID
@@ -40,7 +39,7 @@ class SetupAdminUseCase @Inject constructor(
             displayName = displayNameEn.ifBlank { displayNameAr },
             displayNameAr = displayNameAr,
             role = UserRole.ADMIN,
-            department = Department.PHARMACY,
+            department = null,
             isActive = true,
         )
         userRepository.create(admin, password)

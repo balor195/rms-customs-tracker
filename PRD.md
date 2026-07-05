@@ -4,7 +4,7 @@
 **Organization:** Royal Medical Services — Directorate of Pharmacy & Medical Equipment  
 **الجهة:** الخدمات الطبية الملكية — مديرية الصيدلة والتجهيزات الطبية  
 **Document version:** 1.0  
-**Date:** 2026-06-29  
+**Date:** 2026-06-29 (last updated 2026-07-05 — workflow/roles/field overhaul, see inline `2026-07-05` annotations and `PROGRESS.md`)  
 **Status:** Implemented (v1.0.0)
 
 ---
@@ -25,12 +25,20 @@ Prior to this system, tracking was done through paper logs and shared spreadshee
 
 ## 2. Users & Roles
 
-| Role | Arabic | Permissions |
-|---|---|---|
-| **ADMIN** | مسؤول النظام | Full access: create/manage users, configure SLAs, view all data, export |
-| **COORDINATOR** | منسق التخليص | Create transactions, advance phases, upload documents |
-| **SUPERVISOR** | مشرف | Approve phase transitions, view all data, export reports |
-| **VIEWER** | مستعرض | Read-only access to transaction list and detail |
+*(Updated 2026-07-05 — role model and division scoping overhauled; see below.)*
+
+*(Updated again 2026-07-05 — added `TENDER_OFFICER`; `ADMIN`/`CLEARANCE`/`WAREHOUSE` accounts no longer belong to any division at all.)*
+
+| Role | Arabic | Permissions | Division scope |
+|---|---|---|---|
+| **ADMIN** | مسؤول النظام | Full access: create/manage users, configure SLAs, view all data, export | No division (belongs to none) |
+| **CLEARANCE** | التخليص | The only role (besides ADMIN) that can mark a transaction "تم التخليص" (clearance issued) | No division (belongs to none) |
+| **WAREHOUSE** | المستودعات | The only role (besides ADMIN) that can confirm "تم النقل الى المستودعات" (transferred to warehouses) | No division (belongs to none), but only sees transactions that have already been cleared |
+| **SUPERVISOR** | مشرف | Create/edit transactions, approve phase transitions, export reports | Own division (شعبة) only |
+| **TENDER_OFFICER** | ضابط العطاء | Create/edit transactions and upload documents — no approval or export rights | Own division (شعبة) only |
+| **VIEWER** | مستعرض | Read-only access to transaction list and detail | Own division (شعبة) only |
+
+A Supervisor, Tender Officer, or Viewer can only see and create transactions within their own division; a Supervisor in the Pharmacy division (شعبة الدواء), for example, cannot see or create transactions belonging to the Medical Consumables or Medical Devices divisions. Admin, Clearance, and Warehouse accounts are not assigned to any division at account-creation time.
 
 All users authenticate with a username and password (PBKDF2-SHA256 hashed). Sessions persist across app restarts via encrypted SharedPreferences (EncryptedSharedPreferences).
 
@@ -52,48 +60,32 @@ All users authenticate with a username and password (PBKDF2-SHA256 hashed). Sess
 
 ### 4.1 Transaction Lifecycle Management
 
-Each transaction follows a strict 7-phase linear workflow enforced by a state machine. Unauthorized out-of-order transitions are rejected at the domain layer.
+*(Updated 2026-07-05, twice — first simplified from 7 to 5 phases; later that day, the old Phase 3 "Transit & Warehouse Receipt" and Phase 5 "Transferred to Warehouses" were recognized as describing the same event and merged, leaving 4 phases.)*
+
+Each transaction follows a strict 4-phase linear workflow enforced by a state machine. Unauthorized out-of-order transitions are rejected at the domain layer.
 
 **Phases:**
 
 | # | Arabic | English |
 |---|---|---|
-| 1 | إعداد العطاء | Tender Preparation |
-| 2 | التقييم والعقد | Evaluation & Contract |
-| 3 | إعداد وثائق التخليص | Clearance Documentation |
-| 4 | الجهات الحكومية | Gov-Agency Processing (parallel) |
-| 5 | أمر الإفراج | Release Order |
-| 6 | النقل والاستلام | Transit & Receipt |
-| 7 | التسوية المالية | Financial Settlement |
+| 1 | تحضير المناقصة وإصدارها | Tender Preparation & Publication |
+| 2 | طلب تخليص | Clearance Request |
+| 3 | إغلاق المعاملة والتسوية المالية | Transaction Closing & Financial Settlement |
+| 4 | تم النقل الى المستودعات | Transferred to Warehouses — final confirmation checkbox; closes the transaction and displays it in red |
 
 **Hard gates enforced by the system:**
-- Cannot submit customs declaration (Phase 3→4) without a signed contract
-- Cannot move shipment to transit (Phase 5→6) without a final release order
-- Cannot issue GOV_APPROVED until all three Phase 4 parallel tracks are complete
+- Cannot confirm Phase 4 ("تم النقل الى المستودعات") before financial closing (Phase 3) is complete
+- Only the `WAREHOUSE` role (or `ADMIN`) may perform the Phase 4 confirmation; only `CLEARANCE` (or `ADMIN`) may issue Phase 2 clearance
 
 **Exception overlays:** A transaction can be flagged BLOCKED, ON_HOLD, or DISPUTED at any point without losing its position in the workflow. Resolving the exception restores the transaction to its last phase.
 
-### 4.2 Phase 4 Parallel Tracks
+### 4.2 Phase 4 Parallel Tracks *(removed 2026-07-05)*
 
-Phase 4 (Gov-Agency Processing) requires simultaneous approvals from three entities:
+> The former Phase 4 (Gov-Agency Processing) — which required simultaneous parallel approvals from Armed Forces Command, Jordan Customs, and Jordan FDA — was removed from the workflow entirely, along with its supporting sub-approval tracking. It is no longer part of the product.
 
-| Track | Entity | Arabic |
-|---|---|---|
-| 4.1 | Armed Forces Command | القيادة العامة للقوات المسلحة |
-| 4.2 | Jordan Customs | الجمارك الأردنية |
-| 4.3 | Jordan FDA | هيئة الغذاء والدواء الأردنية |
+### 4.3 SLA Monitoring & Alerts *(automated checker removed 2026-07-05)*
 
-All three tracks must reach DONE status before the transaction can advance to Phase 5.
-
-### 4.3 SLA Monitoring & Alerts
-
-- Each sub-phase (including all three Phase 4 tracks) has a configurable SLA target in working days
-- The system checks SLA compliance every 6 hours in the background (even when the app is closed)
-- Two alert levels: **SLA Breach** (target exceeded) and **SLA Escalated** (escalation threshold exceeded)
-- At most one notification per transaction per alert type per 24 hours (deduplication)
-- Notifications appear in the in-app Notification Center and as Android system notifications
-
-SLA targets are configurable by ADMIN through the SLA Configuration screen.
+> The background SLA-breach checker (6-hourly scan + Android/in-app notifications) was tied entirely to the removed Phase-4 approval tracks and was removed along with them rather than left non-functional. SLA targets remain configurable by ADMIN through the SLA Configuration screen as reference data, but there is currently no automated breach/escalation alerting. A future SLA engine would need a new per-phase timestamp mechanism, since the sub-phase tracking it previously relied on no longer exists.
 
 ### 4.4 Document Management
 
@@ -104,10 +96,12 @@ Each transaction has an attached documents section. Supported actions:
 
 ### 4.5 Dashboard & Reporting
 
-**Dashboard** shows at-a-glance KPIs:
-- Transactions by status (active, blocked, closed)
-- SLA compliance rate
+**Dashboard** shows at-a-glance KPIs, scoped to the viewer's division (see §2):
+- Transactions by status (active, closed this month)
 - Transactions per phase distribution
+- Shipment status breakdown and value-by-division
+
+> *(2026-07-05)* SLA compliance rate and overdue-transaction indicators were removed from the dashboard along with the Phase-4 subsystem they depended on (§4.2/§4.3).
 
 **Reports** (ADMIN and SUPERVISOR only) are generated as PDF or CSV:
 - **Weekly** — all transactions updated in the last 7 days
@@ -143,6 +137,15 @@ Passwords are hashed with PBKDF2-SHA256 (10,000 iterations) and never stored in 
 - **User Management** — ADMIN only
 - **SLA Configuration** — ADMIN only
 
+### 4.9 Tender Intake Fields & Business Rules *(added 2026-07-05)*
+
+When creating a new transaction, officers can additionally record:
+- **Weight (كغم)** — numeric shipment weight
+- **Refrigerated (مبرّدة / غير مبرّدة)** — whether the shipment requires refrigeration
+- **Default shelf life (العمر الافتراضي)** — free-text shelf-life note, shown only for the Medical Consumables division (شعبة المستهلكات الطبية)
+
+**Business rule:** The "عاجل" (Urgent) priority can only be selected when the beneficiary is الخدمات الطبية الملكية (RMS) **and** the shipment is refrigerated. This is enforced both in the create form (the option is disabled otherwise) and as a hard validation rule.
+
 ---
 
 ## 5. Non-Functional Requirements
@@ -177,9 +180,9 @@ Passwords are hashed with PBKDF2-SHA256 (10,000 iterations) and never stored in 
 | Term | Meaning |
 |---|---|
 | **Transaction** | A single import/procurement clearance case, uniquely identified by a transaction reference (e.g., RMS-2026-0042) |
-| **Phase** | One of 7 major workflow stages a transaction must pass through |
-| **PhaseRecord** | A sub-step within a phase, assigned to a specific entity, with its own SLA |
-| **SLA** | Service Level Agreement — target number of days to complete a phase/sub-phase |
+| **Phase** | One of 5 major workflow stages a transaction must pass through (reduced from 7 on 2026-07-05) |
+| **Division (شعبة)** | The medical division a transaction belongs to (Pharmacy, Medical Consumables, or Medical Devices); Supervisor/Viewer accounts are confined to their own division |
+| **SLA** | Service Level Agreement — target number of days to complete a phase; configurable as reference data, though the automated breach-checker has been removed (see §4.3) |
 | **Hard Gate** | A system rule that absolutely prevents a transition if a prerequisite is unmet |
 | **Exception State** | An overlay status (BLOCKED/ON_HOLD/DISPUTED) that pauses a transaction without losing its position |
 | **Cursor** | The `updatedAt` timestamp used as a sync watermark to pull only changed records |

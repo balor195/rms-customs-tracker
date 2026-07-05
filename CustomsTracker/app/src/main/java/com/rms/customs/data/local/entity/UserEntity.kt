@@ -18,7 +18,7 @@ data class UserEntity(
     val displayName: String,
     val displayNameAr: String,
     val role: String,                 // UserRole.name
-    val department: String,           // Department.name
+    val department: String?,          // Department.name, or null (ADMIN/CLEARANCE/WAREHOUSE)
     val passwordHash: String,
     val isActive: Boolean,
     val lastLoginAt: Long?,
@@ -30,7 +30,7 @@ fun UserEntity.toDomain() = User(
     displayName = displayName,
     displayNameAr = displayNameAr,
     role = UserRole.valueOf(role),
-    department = Department.valueOf(department),
+    department = department?.let { Department.valueOf(it) },
     isActive = isActive,
     lastLoginAt = lastLoginAt,
 )
@@ -41,7 +41,7 @@ fun User.toEntity(passwordHash: String) = UserEntity(
     displayName = displayName,
     displayNameAr = displayNameAr,
     role = role.name,
-    department = department.name,
+    department = department?.name,
     passwordHash = passwordHash,
     isActive = isActive,
     lastLoginAt = lastLoginAt,

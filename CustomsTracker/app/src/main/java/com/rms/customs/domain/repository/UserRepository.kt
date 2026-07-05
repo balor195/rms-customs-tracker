@@ -1,6 +1,7 @@
 package com.rms.customs.domain.repository
 
 import com.rms.customs.domain.model.User
+import com.rms.customs.domain.model.enums.Department
 import com.rms.customs.domain.model.enums.UserRole
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
@@ -14,5 +15,5 @@ interface UserRepository {
     suspend fun deactivate(id: UUID)
     suspend fun verifyCredentials(username: String, password: String): User?
     suspend fun updateLastLogin(id: UUID)
-    suspend fun updateRole(id: UUID, role: UserRole)
+    suspend fun updateRole(id: UUID, role: UserRole, department: Department?)
 }

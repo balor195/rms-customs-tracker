@@ -25,6 +25,9 @@ data class Transaction(
     val expectedArrivalDate: Long? = null,          // تاريخ الوصول المتوقع
     val actualArrivalDate: Long? = null,            // تاريخ الوصول الفعلي
     val shipmentStatus: ShipmentStatus = ShipmentStatus.EXPECTED,  // حالة الشحنة
+    val weightKg: Double? = null,                   // وزن الشحنة (كغم)
+    val isRefrigerated: Boolean = false,            // هل الشحنة مبرّدة
+    val defaultShelfLife: String? = null,           // العمر الافتراضي (شعبة المستهلكات فقط)
     val currentPhase: TransactionPhase,
     val currentStatus: TransactionStatus,
     val exceptionState: TransactionStatus? = null,  // BLOCKED / ON_HOLD / DISPUTED overlay

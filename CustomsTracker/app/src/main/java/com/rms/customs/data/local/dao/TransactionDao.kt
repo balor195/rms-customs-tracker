@@ -54,15 +54,6 @@ interface TransactionDao {
         ORDER BY updatedAt DESC""")
     fun search(q: String): Flow<List<TransactionEntity>>
 
-    @Query("""
-        SELECT COUNT(*) FROM phase_records
-        WHERE status = 'IN_PROGRESS'
-        AND slaTargetDays IS NOT NULL
-        AND startedAt IS NOT NULL
-        AND ((:now - startedAt) / 86400000) > slaTargetDays
-    """)
-    suspend fun countOverdueSla(now: Long): Int
-
     // ── Sync helpers ────────────────────────────────────────────────────────
 
     @Query("SELECT * FROM transactions WHERE updatedAt > :since ORDER BY updatedAt ASC")

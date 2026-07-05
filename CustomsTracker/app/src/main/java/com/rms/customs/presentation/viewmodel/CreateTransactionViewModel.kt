@@ -53,6 +53,9 @@ class CreateTransactionViewModel @Inject constructor(
         expectedArrivalDate: Long?,
         notes: String,
         priority: Priority,
+        weightKg: String,
+        isRefrigerated: Boolean,
+        defaultShelfLife: String,
         createdByUserId: UUID,
     ) {
         if (accreditationNumber.isBlank()) {
@@ -69,6 +72,10 @@ class CreateTransactionViewModel @Inject constructor(
         }
         if (title.isBlank()) {
             _uiState.update { it.copy(error = "الرجاء إدخال وصف المعاملة") }
+            return
+        }
+        if (priority == Priority.URGENT && !(beneficiary == Beneficiary.RMS && isRefrigerated)) {
+            _uiState.update { it.copy(error = "الأولوية \"عاجل\" متاحة فقط للشحنات الخاصة بالخدمات الطبية الملكية والمبرّدة") }
             return
         }
         viewModelScope.launch {
@@ -89,6 +96,9 @@ class CreateTransactionViewModel @Inject constructor(
                         supplierName        = supplierName.trim(),
                         totalValue          = totalValue.trim().toDoubleOrNull(),
                         expectedArrivalDate = expectedArrivalDate,
+                        weightKg            = weightKg.trim().toDoubleOrNull(),
+                        isRefrigerated      = isRefrigerated,
+                        defaultShelfLife    = defaultShelfLife.trim().ifBlank { null },
                         currentPhase        = TransactionPhase.PHASE_1_TENDER,
                         currentStatus       = TransactionStatus.TENDER_PREPARATION,
                         priority            = priority,

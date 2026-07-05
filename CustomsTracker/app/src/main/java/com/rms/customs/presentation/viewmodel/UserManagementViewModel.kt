@@ -21,7 +21,7 @@ data class CreateUserForm(
     val displayNameAr: String = "",
     val username: String      = "",
     val password: String      = "",
-    val role: UserRole        = UserRole.COORDINATOR,
+    val role: UserRole        = UserRole.SUPERVISOR,
     val department: Department = Department.PHARMACY,
 )
 
@@ -55,7 +55,7 @@ class UserManagementViewModel @Inject constructor(
                 displayName   = form.displayNameEn.ifBlank { form.displayNameAr },
                 displayNameAr = form.displayNameAr,
                 role          = form.role,
-                department    = form.department,
+                department    = if (form.role.seesAllDivisions) null else form.department,
                 isActive      = true,
             )
             userRepository.create(user, form.password)
@@ -67,8 +67,9 @@ class UserManagementViewModel @Inject constructor(
         }
     }
 
-    fun updateRole(userId: UUID, role: UserRole) = viewModelScope.launch {
-        runCatching { userRepository.updateRole(userId, role) }
+    fun updateRole(userId: UUID, role: UserRole, department: Department?) = viewModelScope.launch {
+        val resolvedDepartment = if (role.seesAllDivisions) null else department
+        runCatching { userRepository.updateRole(userId, role, resolvedDepartment) }
             .onSuccess  { _successMessage.value = "تم تحديث الدور" }
             .onFailure  { _errorMessage.value   = "فشل تحديث الدور" }
     }

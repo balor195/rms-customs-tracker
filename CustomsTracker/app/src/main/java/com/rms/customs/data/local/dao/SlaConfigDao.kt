@@ -13,6 +13,9 @@ interface SlaConfigDao {
     @Query("SELECT * FROM sla_configs WHERE isActive = 1")
     fun observeAll(): Flow<List<SlaConfigEntity>>
 
+    @Query("SELECT COUNT(*) FROM sla_configs")
+    suspend fun count(): Int
+
     @Query("SELECT * FROM sla_configs WHERE phaseNumber = :phase AND subPhase = :subPhase AND isActive = 1 LIMIT 1")
     suspend fun getForSubPhase(phase: Int, subPhase: String): SlaConfigEntity?
 

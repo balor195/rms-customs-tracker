@@ -51,11 +51,19 @@ if not exist "gradlew.bat" (
     pause & exit /b 1
 )
 
+:: ── Detect signing config ────────────────────────────────────────────────────
+set "SIGNED=0"
+if exist "keystore.properties" set "SIGNED=1"
+
 :: ── Choose build type ─────────────────────────────────────────────────────────
 echo.
 echo  Select build type:
-echo    1  Debug   ^(fast, unsigned — for testing^)   [default]
-echo    2  Release ^(minified, unsigned^)
+echo    1  Debug    ^(fast, unsigned — for testing^)   [default]
+if "!SIGNED!"=="1" (
+    echo    2  Release  ^(minified, SIGNED — for distribution^)
+) else (
+    echo    2  Release  ^(minified, UNSIGNED — run generate_keystore.bat to sign^)
+)
 echo.
 set "CHOICE=1"
 set /p "INPUT=Enter 1 or 2 [default=1]: "
@@ -64,7 +72,11 @@ if not "!INPUT!"=="" set "CHOICE=!INPUT!"
 if "!CHOICE!"=="2" (
     set "BUILD_TASK=assembleRelease"
     set "APK_SUBDIR=app\build\outputs\apk\release"
-    set "APK_FILE=app-release-unsigned.apk"
+    if "!SIGNED!"=="1" (
+        set "APK_FILE=app-release.apk"
+    ) else (
+        set "APK_FILE=app-release-unsigned.apk"
+    )
 ) else (
     set "BUILD_TASK=assembleDebug"
     set "APK_SUBDIR=app\build\outputs\apk\debug"

@@ -1,23 +1,20 @@
 package com.rms.customs.data.repository
 
 import com.rms.customs.data.local.dao.ActivityLogDao
-import com.rms.customs.data.local.dao.PhaseRecordDao
 import com.rms.customs.data.local.dao.TransactionDao
+import com.rms.customs.data.local.dao.UserDao
 import com.rms.customs.data.local.entity.ActivityLogEntity
 import com.rms.customs.data.local.entity.toDomain
 import com.rms.customs.data.local.entity.toEntity
 import com.rms.customs.domain.model.ActivityLog
-import com.rms.customs.domain.model.PhaseRecord
 import com.rms.customs.domain.model.Transaction
 import com.rms.customs.domain.model.enums.LogAction
-import com.rms.customs.domain.model.enums.PhaseStatus
 import com.rms.customs.domain.model.enums.TransactionStatus
+import com.rms.customs.domain.model.enums.UserRole
 import com.rms.customs.domain.model.enums.toPhase
-import com.rms.customs.domain.repository.SlaRepository
 import com.rms.customs.domain.repository.TransactionRepository
 import com.rms.customs.domain.statemachine.TransactionStateMachine
 import com.rms.customs.domain.statemachine.TransitionResult
-import com.rms.customs.domain.usecase.Phase4Tracks
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.UUID
@@ -28,8 +25,7 @@ import javax.inject.Singleton
 class TransactionRepositoryImpl @Inject constructor(
     private val transactionDao: TransactionDao,
     private val activityLogDao: ActivityLogDao,
-    private val phaseRecordDao: PhaseRecordDao,
-    private val slaRepository: SlaRepository,
+    private val userDao: UserDao,
     private val stateMachine: TransactionStateMachine,
 ) : TransactionRepository {
 
@@ -79,12 +75,15 @@ class TransactionRepositoryImpl @Inject constructor(
             ?.toDomain()
             ?: error("Transaction $transactionId not found")
 
-        // Hard gate for GOV_APPROVED: all Phase 4 PhaseRecords must be DONE
-        if (newStatus == TransactionStatus.GOV_APPROVED) {
-            val incomplete = phaseRecordDao.countPhase4Incomplete(transactionId.toString())
-            if (incomplete > 0) {
-                error("لا يمكن الموافقة قبل اكتمال جميع مسارات المرحلة الرابعة / All Phase 4 tracks must be complete")
-            }
+        // Defense in depth: the UI hides the relevant button/checkbox for unauthorized roles,
+        // but that alone is not a security boundary — enforce the same restriction here too,
+        // so no UI edge case can let an unauthorized actor perform these two exclusive actions.
+        val actorRole = userDao.getById(actorUserId.toString())?.role?.let { runCatching { UserRole.valueOf(it) }.getOrNull() }
+        if (newStatus == TransactionStatus.CLEARANCE_ISSUED && actorRole?.canMarkClearanceDone != true) {
+            error("لا تملك صلاحية تنفيذ التخليص / You do not have permission to mark clearance done")
+        }
+        if (newStatus == TransactionStatus.TRANSFERRED_TO_WAREHOUSE && actorRole?.canMarkWarehouseTransferred != true) {
+            error("لا تملك صلاحية تأكيد النقل للمستودعات / You do not have permission to confirm warehouse transfer")
         }
 
         val result = stateMachine.advance(existing, newStatus)
@@ -97,7 +96,7 @@ class TransactionRepositoryImpl @Inject constructor(
             currentPhase  = newPhase,
             exceptionState = if (newStatus.isException) newStatus else null,
             updatedAt = now,
-            closedAt = if (newStatus == TransactionStatus.CLOSED) now else existing.closedAt,
+            closedAt = if (newStatus == TransactionStatus.TRANSFERRED_TO_WAREHOUSE) now else existing.closedAt,
         )
         val log = ActivityLogEntity(
             id = UUID.randomUUID().toString(),
@@ -110,18 +109,6 @@ class TransactionRepositoryImpl @Inject constructor(
             occurredAt = now,
         )
         transactionDao.advanceStatus(updated.toEntity(), log)
-
-        // When entering Phase 4, seed the 4 gov-agency tracks (4.4 Ministry of Health starts SKIPPED).
-        if (newStatus == TransactionStatus.GOV_PROCESSING) {
-            val slaMap = mapOf(
-                "4.1" to (slaRepository.getForSubPhase(4, "4.1")?.targetDays ?: 15),
-                "4.2" to (slaRepository.getForSubPhase(4, "4.2")?.targetDays ?: 10),
-                "4.3" to (slaRepository.getForSubPhase(4, "4.3")?.targetDays ?: 12),
-                "4.4" to (slaRepository.getForSubPhase(4, "4.4")?.targetDays ?: 7),
-            )
-            val tracks = Phase4Tracks.createFor(transactionId, slaMap, now)
-            phaseRecordDao.insertAll(tracks.map { it.toEntity() })
-        }
     }
 
     override suspend fun setExceptionState(
@@ -170,32 +157,8 @@ class TransactionRepositoryImpl @Inject constructor(
         activityLogDao.observeForTransaction(transactionId.toString())
             .map { it.map { e -> e.toDomain() } }
 
-    override fun observePhaseRecords(transactionId: UUID): Flow<List<PhaseRecord>> =
-        phaseRecordDao.observeForTransaction(transactionId.toString())
-            .map { it.map { e -> e.toDomain() } }
-
-    override suspend fun updatePhaseRecord(record: PhaseRecord) {
-        phaseRecordDao.update(record.toEntity())
-        transactionDao.bumpUpdatedAt(record.transactionId.toString(), System.currentTimeMillis())
-    }
-
-    override suspend fun completePhaseRecord(phaseRecordId: UUID, completedByUserId: UUID) {
-        val now = System.currentTimeMillis()
-        phaseRecordDao.markComplete(
-            id          = phaseRecordId.toString(),
-            status      = PhaseStatus.DONE.name,
-            completedAt = now,
-            userId      = completedByUserId.toString(),
-        )
-        val txId = phaseRecordDao.getById(phaseRecordId.toString())?.transactionId ?: return
-        transactionDao.bumpUpdatedAt(txId, now)
-    }
-
     override suspend fun countByStatus(status: TransactionStatus): Int =
         transactionDao.countByStatus(status.name)
-
-    override suspend fun countOverdueSla(): Int =
-        transactionDao.countOverdueSla(System.currentTimeMillis())
 
     override suspend fun generateRef(): String {
         val year = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
@@ -203,13 +166,4 @@ class TransactionRepositoryImpl @Inject constructor(
         val count = transactionDao.countWithPrefix(prefix)
         return "$prefix${(count + 1).toString().padStart(4, '0')}"
     }
-
-    override suspend fun getActivePhasesForSlaCheck(): List<PhaseRecord> =
-        phaseRecordDao.getActivePhasesForSlaCheck().map { it.toDomain() }
-
-    override fun observeAllInProgressPhases(): Flow<List<PhaseRecord>> =
-        phaseRecordDao.observeAllInProgress().map { it.map { e -> e.toDomain() } }
-
-    override fun observeCompletedPhasesBySubPhase(subPhase: String): Flow<List<PhaseRecord>> =
-        phaseRecordDao.observeCompletedBySubPhase(subPhase).map { it.map { e -> e.toDomain() } }
 }

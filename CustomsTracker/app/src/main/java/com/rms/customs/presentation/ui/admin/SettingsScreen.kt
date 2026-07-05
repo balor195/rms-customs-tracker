@@ -19,12 +19,16 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -40,7 +44,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -48,6 +54,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rms.customs.domain.model.enums.Department
 import com.rms.customs.domain.model.enums.UserRole
 import com.rms.customs.presentation.ui.LocalUserSession
 import com.rms.customs.presentation.ui.RequireRole
@@ -59,6 +66,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onNavigateToSlaAdmin: () -> Unit,
     onNavigateToUserManagement: () -> Unit,
+    onViewAs: (UserRole, Department?) -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val session    = LocalUserSession.current
@@ -172,15 +180,82 @@ fun SettingsScreen(
                 }
             }
 
+            // ── View-as / test mode (ADMIN only, in-memory, not persisted) ─────
+            RequireRole(UserRole.ADMIN) {
+                ViewAsCard(onViewAs = onViewAs)
+            }
+
             // ── App info ─────────────────────────────────────────────────────
             SettingsCard(title = "حول التطبيق", icon = Icons.Default.Info) {
-                InfoRow("الجهة", "مديرية الصيدلة والتجهيزات الطبية")
+                InfoRow("الجهة", "مديرية الصيدلة والتزويد الطبّي")
                 InfoRow("المؤسسة", "الخدمات الطبية الملكية — الأردن")
                 InfoRow("الإصدار", "1.0.0")
                 InfoRow("المنصة", "Android — Jetpack Compose + Hilt + Room")
             }
 
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ViewAsCard(onViewAs: (UserRole, Department?) -> Unit) {
+    val viewAsRoles = remember { UserRole.entries.filter { it != UserRole.ADMIN } }
+    var role       by remember { mutableStateOf(viewAsRoles.first()) }
+    var department by remember { mutableStateOf(Department.PHARMACY) }
+    var roleExpanded by remember { mutableStateOf(false) }
+    var deptExpanded  by remember { mutableStateOf(false) }
+
+    SettingsCard(title = "وضع التجربة", icon = Icons.Default.Science) {
+        Text(
+            text  = "تصفّح التطبيق مؤقتاً كأنك حساب من نوع آخر — لغايات التجربة فقط، ولا يُحفظ بعد إغلاق التطبيق",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        ExposedDropdownMenuBox(expanded = roleExpanded, onExpandedChange = { roleExpanded = it }) {
+            OutlinedTextField(
+                value = role.labelAr, onValueChange = {},
+                readOnly = true, label = { Text("الدور") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(roleExpanded) },
+                modifier = Modifier.fillMaxWidth().menuAnchor(),
+            )
+            ExposedDropdownMenu(expanded = roleExpanded, onDismissRequest = { roleExpanded = false }) {
+                viewAsRoles.forEach { r ->
+                    DropdownMenuItem(
+                        text = { Text(r.labelAr) },
+                        onClick = { role = r; roleExpanded = false },
+                    )
+                }
+            }
+        }
+
+        if (!role.seesAllDivisions) {
+            ExposedDropdownMenuBox(expanded = deptExpanded, onExpandedChange = { deptExpanded = it }) {
+                OutlinedTextField(
+                    value = department.labelAr, onValueChange = {},
+                    readOnly = true, label = { Text("الشعبة") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(deptExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                )
+                ExposedDropdownMenu(expanded = deptExpanded, onDismissRequest = { deptExpanded = false }) {
+                    Department.entries.forEach { d ->
+                        DropdownMenuItem(
+                            text = { Text(d.labelAr) },
+                            onClick = { department = d; deptExpanded = false },
+                        )
+                    }
+                }
+            }
+        }
+
+        Button(
+            onClick  = { onViewAs(role, if (role.seesAllDivisions) null else department) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(Icons.Default.Science, contentDescription = null, modifier = Modifier.size(16.dp))
+            Text("  تفعيل وضع التجربة")
         }
     }
 }

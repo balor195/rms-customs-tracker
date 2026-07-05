@@ -1,10 +1,11 @@
 package com.rms.customs.presentation.ui.dashboard
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,30 +18,35 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.rms.customs.presentation.ui.ShimmerBox
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rms.customs.presentation.ui.LocalUserSession
 import com.rms.customs.presentation.ui.theme.CustomsColors
 import com.rms.customs.presentation.viewmodel.DashboardStats
 import com.rms.customs.presentation.viewmodel.DashboardViewModel
 import com.rms.customs.presentation.viewmodel.DivisionValueEntry
-import com.rms.customs.presentation.viewmodel.OverdueItem
 import kotlin.math.roundToInt
 
 @Composable
@@ -49,44 +55,42 @@ fun DashboardScreen(
     modifier: Modifier = Modifier,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
-    val stats by viewModel.stats.collectAsStateWithLifecycle()
+    val stats   by viewModel.stats.collectAsStateWithLifecycle()
+    val session = LocalUserSession.current
+
+    LaunchedEffect(session?.user) {
+        session?.user?.let { viewModel.setCurrentUser(it) }
+    }
 
     if (!stats.isLoaded) {
-        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
+        DashboardSkeleton(modifier)
         return
     }
 
     LazyColumn(
-        modifier            = modifier.fillMaxSize(),
+        modifier            = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         // ── Summary cards ────────────────────────────────────────────────────
         item { SectionHeader("ملخص المعاملات") }
         item {
             Row(
-                modifier              = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                modifier              = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 SummaryCard(
-                    label    = "نشطة",
-                    value    = stats.totalActive.toString(),
-                    color    = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.weight(1f),
+                    label       = "نشطة",
+                    value       = stats.totalActive.toString(),
+                    accentColor = MaterialTheme.colorScheme.primary,
+                    icon        = Icons.Default.Assignment,
+                    modifier    = Modifier.weight(1f),
                 )
                 SummaryCard(
-                    label    = "تجاوزت SLA",
-                    value    = stats.overdueSlaCount.toString(),
-                    color    = if (stats.overdueSlaCount > 0) CustomsColors.Overdue
-                               else MaterialTheme.colorScheme.outline,
-                    modifier = Modifier.weight(1f),
-                )
-                SummaryCard(
-                    label    = "مغلقة هذا الشهر",
-                    value    = stats.closedThisMonth.toString(),
-                    color    = CustomsColors.OnTime,
-                    modifier = Modifier.weight(1f),
+                    label       = "مغلقة هذا الشهر",
+                    value       = stats.closedThisMonth.toString(),
+                    accentColor = CustomsColors.OnTime,
+                    icon        = Icons.Default.CheckCircle,
+                    modifier    = Modifier.weight(1f),
                 )
             }
         }
@@ -99,7 +103,7 @@ fun DashboardScreen(
                 arrived          = stats.shipmentArrived,
                 cleared          = stats.shipmentCleared,
                 upcomingArrivals = stats.upcomingArrivalsCount,
-                modifier         = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                modifier         = Modifier.padding(horizontal = 16.dp),
             )
         }
 
@@ -108,7 +112,7 @@ fun DashboardScreen(
         item {
             PhaseDistributionChart(
                 distribution = stats.phaseDistribution,
-                modifier     = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                modifier     = Modifier.padding(horizontal = 16.dp),
             )
         }
 
@@ -118,46 +122,66 @@ fun DashboardScreen(
             item {
                 ValueByDivisionChart(
                     entries  = stats.valueByDivision,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp),
                 )
             }
         }
 
         // ── KPIs ─────────────────────────────────────────────────────────────
-        item { SectionHeader("مؤشرات الأداء (KPIs)") }
+        item { SectionHeader("مؤشرات الأداء") }
         item {
             KpiGrid(
                 stats    = stats,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                modifier = Modifier.padding(horizontal = 16.dp),
             )
         }
 
-        // ── Priority overdue list ─────────────────────────────────────────────
-        item { SectionHeader("أعلى المعاملات تأخيراً") }
-        if (stats.overdueItems.isNotEmpty()) {
-            items(stats.overdueItems, key = { it.transactionId + it.phaseLabel }) { item ->
-                OverdueRow(
-                    item    = item,
-                    onClick = { onTransactionClick(item.transactionId) },
-                )
-                HorizontalDivider(Modifier.padding(horizontal = 16.dp))
-            }
-        } else {
-            item {
-                Box(
-                    modifier         = Modifier.fillMaxWidth().padding(16.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text  = "لا توجد معاملات متأخرة عن الجدول الزمني ✓",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = CustomsColors.OnTime,
-                    )
+        item { Spacer(Modifier.height(32.dp)) }
+    }
+}
+
+// ── Dashboard skeleton (shown while data loads) ───────────────────────────────
+
+@Composable
+private fun DashboardSkeleton(modifier: Modifier = Modifier) {
+    LazyColumn(
+        modifier            = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+        contentPadding      = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // Section header placeholder
+        item {
+            ShimmerBox(Modifier.width(140.dp).height(14.dp).clip(RoundedCornerShape(4.dp)))
+        }
+        // Summary cards row
+        item {
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                repeat(3) {
+                    ShimmerBox(Modifier.weight(1f).height(80.dp).clip(RoundedCornerShape(16.dp)))
                 }
             }
         }
-
-        item { Spacer(Modifier.height(24.dp)) }
+        // Section header placeholder
+        item {
+            Spacer(Modifier.height(8.dp))
+            ShimmerBox(Modifier.width(120.dp).height(14.dp).clip(RoundedCornerShape(4.dp)))
+        }
+        // Chart area placeholder
+        item {
+            ShimmerBox(Modifier.fillMaxWidth().height(72.dp).clip(RoundedCornerShape(12.dp)))
+        }
+        // Section header placeholder
+        item {
+            Spacer(Modifier.height(8.dp))
+            ShimmerBox(Modifier.width(100.dp).height(14.dp).clip(RoundedCornerShape(4.dp)))
+        }
+        // KPI row placeholders
+        items(4) {
+            ShimmerBox(Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(8.dp)))
+        }
     }
 }
 
@@ -165,13 +189,27 @@ fun DashboardScreen(
 
 @Composable
 private fun SectionHeader(title: String) {
-    Text(
-        text       = title,
-        style      = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.Bold,
-        color      = MaterialTheme.colorScheme.primary,
-        modifier   = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
-    )
+    Row(
+        modifier          = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .height(16.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(2.dp),
+                )
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text       = title,
+            style      = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color      = MaterialTheme.colorScheme.onBackground,
+        )
+    }
 }
 
 // ── Summary card ──────────────────────────────────────────────────────────────
@@ -180,32 +218,46 @@ private fun SectionHeader(title: String) {
 private fun SummaryCard(
     label: String,
     value: String,
-    color: Color,
+    accentColor: Color,
+    icon: ImageVector,
     modifier: Modifier = Modifier,
 ) {
     Card(
         modifier  = modifier,
-        shape     = RoundedCornerShape(12.dp),
-        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape     = RoundedCornerShape(16.dp),
+        colors    = CardDefaults.cardColors(
+            containerColor = accentColor.copy(alpha = 0.08f),
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(
-            modifier            = Modifier.fillMaxWidth().padding(12.dp),
+            modifier            = Modifier
+                .fillMaxWidth()
+                .border(1.dp, accentColor.copy(alpha = 0.18f), RoundedCornerShape(16.dp))
+                .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            Icon(
+                imageVector        = icon,
+                contentDescription = null,
+                tint               = accentColor,
+                modifier           = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.height(6.dp))
             Text(
                 text       = value,
                 style      = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color      = color,
+                color      = accentColor,
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(2.dp))
             Text(
-                text     = label,
-                style    = MaterialTheme.typography.labelSmall,
-                color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                text      = label,
+                style     = MaterialTheme.typography.labelSmall,
+                color     = accentColor.copy(alpha = 0.75f),
+                maxLines  = 2,
+                overflow  = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
             )
         }
     }
@@ -213,9 +265,9 @@ private fun SummaryCard(
 
 // ── Shipment status breakdown ─────────────────────────────────────────────────
 
-private val ShipmentExpectedColor = Color(0xFFF57F17)  // amber
-private val ShipmentArrivedColor  = Color(0xFF1565C0)  // blue
-private val ShipmentClearedColor  = Color(0xFF1B5E20)  // green
+private val ShipmentExpectedColor = Color(0xFFF57F17)
+private val ShipmentArrivedColor  = Color(0xFF1565C0)
+private val ShipmentClearedColor  = Color(0xFF1B5E20)
 
 @Composable
 private fun ShipmentStatusRow(
@@ -231,22 +283,25 @@ private fun ShipmentStatusRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             SummaryCard(
-                label    = "متوقع وصولها",
-                value    = expected.toString(),
-                color    = ShipmentExpectedColor,
-                modifier = Modifier.weight(1f),
+                label       = "متوقع وصولها",
+                value       = expected.toString(),
+                accentColor = ShipmentExpectedColor,
+                icon        = Icons.Default.DateRange,
+                modifier    = Modifier.weight(1f),
             )
             SummaryCard(
-                label    = "وصلت",
-                value    = arrived.toString(),
-                color    = ShipmentArrivedColor,
-                modifier = Modifier.weight(1f),
+                label       = "وصلت",
+                value       = arrived.toString(),
+                accentColor = ShipmentArrivedColor,
+                icon        = Icons.Default.Assignment,
+                modifier    = Modifier.weight(1f),
             )
             SummaryCard(
-                label    = "تم التخليص",
-                value    = cleared.toString(),
-                color    = ShipmentClearedColor,
-                modifier = Modifier.weight(1f),
+                label       = "تم التخليص",
+                value       = cleared.toString(),
+                accentColor = ShipmentClearedColor,
+                icon        = Icons.Default.CheckCircle,
+                modifier    = Modifier.weight(1f),
             )
         }
         if (upcomingArrivals > 0) {
@@ -254,17 +309,31 @@ private fun ShipmentStatusRow(
                 modifier  = Modifier.fillMaxWidth(),
                 shape     = RoundedCornerShape(10.dp),
                 colors    = CardDefaults.cardColors(
-                    containerColor = ShipmentArrivedColor.copy(alpha = 0.10f),
+                    containerColor = ShipmentArrivedColor.copy(alpha = 0.08f),
                 ),
                 elevation = CardDefaults.cardElevation(0.dp),
             ) {
-                Text(
-                    text      = "⏰  $upcomingArrivals شحنة متوقع وصولها خلال 7 أيام القادمة",
-                    style     = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color     = ShipmentArrivedColor,
-                    modifier  = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                )
+                Row(
+                    modifier          = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, ShipmentArrivedColor.copy(alpha = 0.20f), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector        = Icons.Default.DateRange,
+                        contentDescription = null,
+                        tint               = ShipmentArrivedColor,
+                        modifier           = Modifier.size(16.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text       = "$upcomingArrivals شحنة متوقع وصولها خلال 7 أيام القادمة",
+                        style      = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color      = ShipmentArrivedColor,
+                    )
+                }
             }
         }
     }
@@ -282,15 +351,15 @@ private fun PhaseDistributionChart(
 
     Card(
         modifier  = modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(12.dp),
+        shape     = RoundedCornerShape(16.dp),
         colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             distribution.forEach { (label, count) ->
                 val fraction = count.toFloat() / maxCount.toFloat()
                 HorizontalBarRow(
-                    label    = label.take(10),
+                    label    = label.take(12),
                     fraction = fraction,
                     count    = count,
                     barColor = barColor,
@@ -309,15 +378,15 @@ private fun ValueByDivisionChart(
     modifier: Modifier = Modifier,
 ) {
     val maxValue = entries.maxOfOrNull { it.totalValue }?.coerceAtLeast(1.0) ?: 1.0
-    val barColor = Color(0xFF1565C0)
+    val barColor = MaterialTheme.colorScheme.secondary
 
     Card(
         modifier  = modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(12.dp),
+        shape     = RoundedCornerShape(16.dp),
         colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             entries.forEach { entry ->
                 if (entry.count == 0 && entry.totalValue == 0.0) return@forEach
                 val fraction = (entry.totalValue / maxValue).toFloat()
@@ -329,7 +398,10 @@ private fun ValueByDivisionChart(
                     suffix   = formatValue(entry.totalValue),
                 )
             }
-            HorizontalDivider(Modifier.padding(top = 4.dp))
+            HorizontalDivider(
+                modifier = Modifier.padding(top = 4.dp),
+                color    = MaterialTheme.colorScheme.surfaceVariant,
+            )
             Text(
                 text  = "الإجمالي الكلي: ${formatValue(entries.sumOf { it.totalValue })} JOD",
                 style = MaterialTheme.typography.labelSmall,
@@ -364,23 +436,23 @@ private fun HorizontalBarRow(
             text     = label,
             style    = MaterialTheme.typography.labelSmall,
             color    = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(80.dp),
+            modifier = Modifier.width(84.dp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         Box(
             modifier = Modifier
                 .weight(1f)
-                .height(18.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .height(22.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(barColor.copy(alpha = 0.10f)),
         ) {
             if (fraction > 0f) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(fraction)
-                        .height(18.dp)
-                        .clip(RoundedCornerShape(4.dp))
+                        .height(22.dp)
+                        .clip(RoundedCornerShape(6.dp))
                         .background(barColor),
                 )
             }
@@ -392,7 +464,7 @@ private fun HorizontalBarRow(
             fontWeight = FontWeight.Bold,
             color      = if (count > 0) MaterialTheme.colorScheme.onSurface
                          else MaterialTheme.colorScheme.outline,
-            modifier   = Modifier.width(44.dp),
+            modifier   = Modifier.width(48.dp),
         )
     }
 }
@@ -406,43 +478,14 @@ private fun KpiGrid(
 ) {
     Card(
         modifier  = modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(12.dp),
+        shape     = RoundedCornerShape(16.dp),
         colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(vertical = 4.dp)) {
             KpiRow(
                 label = "متوسط وقت إنجاز المعاملة الكلي",
                 value = stats.avgTotalDays?.let { "${it.roundToInt()} يوم" } ?: "—",
-            )
-            HorizontalDivider(Modifier.padding(vertical = 6.dp))
-            // General Command KPI — highlighted as most important for RMS
-            KpiRow(
-                label      = "متوسط إنجاز القيادة العامة (4.1)",
-                value      = stats.avgMilitaryDays?.let { "${it.roundToInt()} يوم" } ?: "—",
-                highlight  = true,
-                valueColor = stats.avgMilitaryDays?.let { days ->
-                    when {
-                        days > 14 -> CustomsColors.Overdue
-                        days > 7  -> CustomsColors.Warning
-                        else      -> CustomsColors.OnTime
-                    }
-                },
-            )
-            HorizontalDivider(Modifier.padding(vertical = 6.dp))
-            KpiRow(
-                label = "متوسط التخليص الجمركي (4.2)",
-                value = stats.avgCustomsDays?.let { "${it.roundToInt()} يوم" } ?: "—",
-            )
-            HorizontalDivider(Modifier.padding(vertical = 6.dp))
-            KpiRow(
-                label      = "نسبة المعاملات المتأخرة",
-                value      = "${stats.delayedRatioPct.roundToInt()}%",
-                valueColor = when {
-                    stats.delayedRatioPct >= 50 -> CustomsColors.Overdue
-                    stats.delayedRatioPct >= 25 -> CustomsColors.Warning
-                    else                        -> CustomsColors.OnTime
-                },
             )
         }
     }
@@ -456,71 +499,45 @@ private fun KpiRow(
     valueColor: Color? = null,
 ) {
     Row(
-        modifier              = Modifier.fillMaxWidth(),
+        modifier              = Modifier
+            .fillMaxWidth()
+            .then(
+                if (highlight) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
+                else Modifier
+            )
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment     = Alignment.CenterVertically,
     ) {
-        Text(
-            text       = label,
-            style      = MaterialTheme.typography.bodySmall,
-            color      = if (highlight) CustomsColors.Military
-                         else MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = if (highlight) FontWeight.Medium else FontWeight.Normal,
-            modifier   = Modifier.weight(1f).padding(end = 8.dp),
-        )
+        Row(
+            modifier          = Modifier.weight(1f).padding(end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (highlight) {
+                Box(
+                    modifier = Modifier
+                        .width(3.dp)
+                        .height(14.dp)
+                        .background(
+                            color = CustomsColors.Military,
+                            shape = RoundedCornerShape(2.dp),
+                        )
+                )
+                Spacer(Modifier.width(8.dp))
+            }
+            Text(
+                text       = label,
+                style      = MaterialTheme.typography.bodySmall,
+                color      = if (highlight) CustomsColors.Military
+                             else MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = if (highlight) FontWeight.SemiBold else FontWeight.Normal,
+            )
+        }
         Text(
             text       = value,
             style      = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
             color      = valueColor ?: MaterialTheme.colorScheme.onSurface,
-        )
-    }
-}
-
-// ── Overdue row ───────────────────────────────────────────────────────────────
-
-@Composable
-private fun OverdueRow(
-    item: OverdueItem,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val isUrgent = item.overdueDays >= 7
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector        = Icons.Default.Warning,
-            contentDescription = null,
-            tint               = if (isUrgent) CustomsColors.Overdue else CustomsColors.Warning,
-            modifier           = Modifier.size(18.dp),
-        )
-        Spacer(Modifier.width(10.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text       = item.transactionRef,
-                style      = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color      = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text     = "${item.supplierName} — ${item.phaseLabel}",
-                style    = MaterialTheme.typography.bodySmall,
-                color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text       = "تأخر ${item.overdueDays} يوم",
-            style      = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color      = if (isUrgent) CustomsColors.Overdue else CustomsColors.Warning,
         )
     }
 }

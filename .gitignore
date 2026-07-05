@@ -6,6 +6,10 @@ __pycache__/
 venv/
 env/
 
+# PyInstaller
+backend/build/
+*.spec
+
 # Database
 *.db
 *.sqlite
@@ -36,3 +40,8 @@ CustomsTracker/build/
 CustomsTrackerDemo/app/build/
 CustomsTrackerDemo/.gradle/
 CustomsTrackerDemo/build/
+
+# Release signing — never commit keystore or credentials
+*.jks
+*.keystore
+keystore.properties

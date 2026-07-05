@@ -27,6 +27,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -59,10 +60,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rms.customs.domain.model.ActivityLog
-import com.rms.customs.domain.model.PhaseRecord
 import com.rms.customs.domain.model.Transaction
-import com.rms.customs.domain.model.enums.PhaseStatus
+import com.rms.customs.domain.model.enums.Department
 import com.rms.customs.domain.model.enums.ShipmentStatus
+import com.rms.customs.domain.model.enums.TransactionStatus
+import com.rms.customs.domain.usecase.isVisibleTo
 import com.rms.customs.presentation.ui.LocalUserSession
 import com.rms.customs.presentation.ui.document.DocumentsTab
 import com.rms.customs.presentation.ui.theme.CustomsColors
@@ -79,7 +81,6 @@ fun TransactionDetailScreen(
     viewModel: TransactionDetailViewModel = hiltViewModel(),
 ) {
     val transaction  by viewModel.transaction.collectAsStateWithLifecycle()
-    val phase4Records by viewModel.phaseRecords.collectAsStateWithLifecycle()
     val activityLog  by viewModel.activityLog.collectAsStateWithLifecycle()
     val transState   by viewModel.transitionState.collectAsStateWithLifecycle()
     val session      = LocalUserSession.current
@@ -88,7 +89,6 @@ fun TransactionDetailScreen(
     var selectedTab       by rememberSaveable { mutableIntStateOf(0) }
     var showAdvanceDialog by remember { mutableStateOf(false) }
     var showBlockerDialog by remember { mutableStateOf(false) }
-    var selectedTrack     by remember { mutableStateOf<PhaseRecord?>(null) }
 
     LaunchedEffect(transState) {
         when (val s = transState) {
@@ -108,9 +108,16 @@ fun TransactionDetailScreen(
 
     val tx         = transaction
     val nextStatus = viewModel.nextForwardStatus()
-    val canWrite   = session?.user?.role?.canWrite == true
+    val role       = session?.user?.role
+    val canWrite   = role?.canWrite == true
     val isClosed   = tx?.currentStatus?.isTerminal == true
     val isBlocked  = tx?.isBlocked == true
+    val isVisible  = tx == null || session?.user?.let { tx.isVisibleTo(it) } != false
+    val canAdvanceNext = when (nextStatus) {
+        TransactionStatus.CLEARANCE_ISSUED          -> role?.canMarkClearanceDone == true
+        TransactionStatus.TRANSFERRED_TO_WAREHOUSE  -> role?.canMarkWarehouseTransferred == true
+        else                                        -> canWrite
+    }
 
     Scaffold(
         topBar = {
@@ -124,44 +131,67 @@ fun TransactionDetailScreen(
             )
         },
         bottomBar = {
-            if (tx != null && canWrite && !isClosed) {
+            if (tx != null && isVisible && !isClosed && (canWrite || canAdvanceNext)) {
                 BottomAppBar {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         if (isBlocked) {
-                            Button(
-                                onClick  = { session?.let { viewModel.clearBlocker(it.user.id) } },
-                                enabled  = transState !is TransitionUiState.Loading,
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                if (transState is TransitionUiState.Loading) {
-                                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                                } else {
-                                    Text("رفع الحجب")
+                            if (canWrite) {
+                                Button(
+                                    onClick  = { session?.let { viewModel.clearBlocker(it.user.id) } },
+                                    enabled  = transState !is TransitionUiState.Loading,
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    if (transState is TransitionUiState.Loading) {
+                                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                    } else {
+                                        Text("رفع الحجب")
+                                    }
                                 }
                             }
                         } else {
-                            if (nextStatus != null) {
+                            if (nextStatus == TransactionStatus.TRANSFERRED_TO_WAREHOUSE) {
+                                if (canAdvanceNext) {
+                                    Row(
+                                        modifier          = Modifier.weight(1f),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Checkbox(
+                                            checked = false,
+                                            onCheckedChange = { checked ->
+                                                if (checked) session?.let {
+                                                    viewModel.advanceStatus(nextStatus, it.user.id)
+                                                }
+                                            },
+                                            enabled = transState !is TransitionUiState.Loading,
+                                        )
+                                        Text(nextStatus.labelAr())
+                                    }
+                                }
+                            } else if (nextStatus != null && canAdvanceNext) {
                                 Button(
                                     onClick  = { showAdvanceDialog = true },
                                     enabled  = transState !is TransitionUiState.Loading,
                                     modifier = Modifier.weight(1f),
                                 ) { Text("تقديم للمرحلة التالية") }
                             }
-                            TextButton(
-                                onClick = { showBlockerDialog = true },
-                                colors  = ButtonDefaults.textButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.error,
-                                ),
-                            ) {
-                                Icon(Icons.Default.Warning, contentDescription = null,
-                                    modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("إبلاغ عن عائق")
+                            if (canWrite) {
+                                TextButton(
+                                    onClick = { showBlockerDialog = true },
+                                    colors  = ButtonDefaults.textButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.error,
+                                    ),
+                                ) {
+                                    Icon(Icons.Default.Warning, contentDescription = null,
+                                        modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("إبلاغ عن عائق")
+                                }
                             }
                         }
                     }
@@ -177,6 +207,17 @@ fun TransactionDetailScreen(
             return@Scaffold
         }
 
+        if (!isVisible) {
+            Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
+                Text(
+                    text  = "ليس لديك صلاحية لعرض هذه المعاملة",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            return@Scaffold
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -185,16 +226,13 @@ fun TransactionDetailScreen(
         ) {
             TransactionHeaderCard(tx)
             ShipmentStatusCard(
-                tx       = tx,
-                canWrite = canWrite && !isClosed,
+                tx             = tx,
+                canWrite       = canWrite && !isClosed,
+                canMarkCleared = role?.canMarkClearanceDone == true && !isClosed,
                 onMarkArrived  = { viewModel.updateShipmentStatus(ShipmentStatus.ARRIVED) },
                 onMarkCleared  = { viewModel.updateShipmentStatus(ShipmentStatus.CLEARED) },
             )
-            PhaseTimeline(
-                transaction   = tx,
-                phase4Records = phase4Records,
-                onTrack4Click = { track -> selectedTrack = track },
-            )
+            PhaseTimeline(transaction = tx)
 
             TabRow(selectedTabIndex = selectedTab) {
                 listOf("التفاصيل", "المستندات", "سجل النشاط", "ملاحظات").forEachIndexed { i, label ->
@@ -237,32 +275,6 @@ fun TransactionDetailScreen(
             isLoading = transState is TransitionUiState.Loading,
             onConfirm = { reason -> session?.let { viewModel.setBlocker(reason, it.user.id) } },
             onDismiss = { showBlockerDialog = false },
-        )
-    }
-
-    selectedTrack?.let { track ->
-        Phase4TrackSheet(
-            track          = track,
-            canWrite       = session?.user?.role?.canWrite == true,
-            onSaveNotes    = { notes ->
-                viewModel.updatePhaseRecord(track.copy(notes = notes.ifBlank { null }))
-                selectedTrack = null
-            },
-            onMarkComplete = {
-                session?.let { s -> viewModel.completePhaseRecord(track.id, s.user.id) }
-                selectedTrack = null
-            },
-            onBlockTrack   = { reason ->
-                viewModel.blockPhaseRecord(track, reason)
-                selectedTrack = null
-            },
-            onActivate     = {
-                viewModel.updatePhaseRecord(
-                    track.copy(status = PhaseStatus.IN_PROGRESS, startedAt = System.currentTimeMillis())
-                )
-                selectedTrack = null
-            },
-            onDismiss = { selectedTrack = null },
         )
     }
 }
@@ -371,6 +383,7 @@ private fun TransactionHeaderCard(tx: Transaction) {
 private fun ShipmentStatusCard(
     tx: Transaction,
     canWrite: Boolean,
+    canMarkCleared: Boolean,
     onMarkArrived: () -> Unit,
     onMarkCleared: () -> Unit,
 ) {
@@ -412,26 +425,28 @@ private fun ShipmentStatusCard(
             }
 
             // Action button
-            if (canWrite) {
-                when (status) {
-                    ShipmentStatus.EXPECTED -> Button(
+            when (status) {
+                ShipmentStatus.EXPECTED -> if (canWrite) {
+                    Button(
                         onClick  = onMarkArrived,
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text("تسجيل وصول الشحنة") }
+                }
 
-                    ShipmentStatus.ARRIVED -> Button(
+                ShipmentStatus.ARRIVED -> if (canMarkCleared) {
+                    Button(
                         onClick  = onMarkCleared,
                         modifier = Modifier.fillMaxWidth(),
                         colors   = ButtonDefaults.buttonColors(containerColor = CustomsColors.OnTime),
                     ) { Text("تأكيد اكتمال التخليص") }
-
-                    ShipmentStatus.CLEARED -> Text(
-                        text  = "✓  تم التخليص النهائي",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = CustomsColors.OnTime,
-                        fontWeight = FontWeight.Bold,
-                    )
                 }
+
+                ShipmentStatus.CLEARED -> Text(
+                    text  = "✓  تم التخليص النهائي",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CustomsColors.OnTime,
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
     }
@@ -518,6 +533,9 @@ private fun DetailsTab(
 
         // ── Division & beneficiary ────────────────────────────────────────
         if (tx.division != null) DetailRow("الشعبة", tx.division.labelAr)
+        if (tx.division == Department.MEDICAL_CONSUMABLES && tx.defaultShelfLife != null) {
+            DetailRow("العمر الافتراضي", tx.defaultShelfLife)
+        }
         if (tx.beneficiary != null) DetailRow("الجهة المستفيدة", tx.beneficiary.labelAr)
 
         // ── Personnel ─────────────────────────────────────────────────────
@@ -536,6 +554,8 @@ private fun DetailsTab(
 
         // ── Shipment ──────────────────────────────────────────────────────
         DetailRow("حالة الشحنة", tx.shipmentStatus.labelAr)
+        if (tx.weightKg != null) DetailRow("الوزن", "${"%.2f".format(tx.weightKg)} كغم")
+        DetailRow("نوع الشحنة", if (tx.isRefrigerated) "مبرّدة" else "غير مبرّدة")
         if (tx.expectedArrivalDate != null) {
             DetailRow("الوصول المتوقع", tx.expectedArrivalDate.toDateString())
         }

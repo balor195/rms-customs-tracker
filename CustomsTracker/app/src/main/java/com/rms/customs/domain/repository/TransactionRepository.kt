@@ -1,7 +1,6 @@
 package com.rms.customs.domain.repository
 
 import com.rms.customs.domain.model.ActivityLog
-import com.rms.customs.domain.model.PhaseRecord
 import com.rms.customs.domain.model.Transaction
 import com.rms.customs.domain.model.enums.TransactionStatus
 import kotlinx.coroutines.flow.Flow
@@ -29,13 +28,6 @@ interface TransactionRepository {
     )
     suspend fun clearExceptionState(transactionId: UUID, actorUserId: UUID)
     fun observeActivityLog(transactionId: UUID): Flow<List<ActivityLog>>
-    fun observePhaseRecords(transactionId: UUID): Flow<List<PhaseRecord>>
-    suspend fun updatePhaseRecord(record: PhaseRecord)
-    suspend fun completePhaseRecord(phaseRecordId: UUID, completedByUserId: UUID)
     suspend fun countByStatus(status: TransactionStatus): Int
-    suspend fun countOverdueSla(): Int
     suspend fun generateRef(): String
-    suspend fun getActivePhasesForSlaCheck(): List<PhaseRecord>
-    fun observeAllInProgressPhases(): Flow<List<PhaseRecord>>
-    fun observeCompletedPhasesBySubPhase(subPhase: String): Flow<List<PhaseRecord>>
 }

@@ -32,6 +32,6 @@ interface UserDao {
     @Query("UPDATE users SET lastLoginAt = :timestamp WHERE id = :id")
     suspend fun updateLastLogin(id: String, timestamp: Long)
 
-    @Query("UPDATE users SET role = :role WHERE id = :id")
-    suspend fun updateRole(id: String, role: String)
+    @Query("UPDATE users SET role = :role, department = :department WHERE id = :id")
+    suspend fun updateRole(id: String, role: String, department: String?)
 }

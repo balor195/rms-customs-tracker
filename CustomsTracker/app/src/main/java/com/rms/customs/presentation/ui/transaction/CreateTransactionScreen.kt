@@ -76,13 +76,23 @@ fun CreateTransactionScreen(
     var billOfLadingNumber   by rememberSaveable { mutableStateOf("") }
     var totalValue           by rememberSaveable { mutableStateOf("") }
     var notes                by rememberSaveable { mutableStateOf("") }
-    var division             by remember { mutableStateOf(Department.PHARMACY) }
+    var weightKg             by rememberSaveable { mutableStateOf("") }
+    var isRefrigerated       by rememberSaveable { mutableStateOf(false) }
+    var defaultShelfLife     by rememberSaveable { mutableStateOf("") }
+    val canPickDivision      = session?.user?.role?.seesAllDivisions == true
+    var division             by remember { mutableStateOf(session?.user?.department ?: Department.PHARMACY) }
     var beneficiary          by remember { mutableStateOf(Beneficiary.RMS) }
     var priority             by remember { mutableStateOf(Priority.NORMAL) }
     var expectedArrivalDate  by remember { mutableStateOf<Long?>(null) }
 
     var divisionExpanded     by remember { mutableStateOf(false) }
     var showDatePicker       by remember { mutableStateOf(false) }
+
+    // "عاجل" مسموحة فقط لشحنة خاصة بالخدمات الطبية الملكية ومبرّدة
+    val canUseUrgent = beneficiary == Beneficiary.RMS && isRefrigerated
+    LaunchedEffect(canUseUrgent) {
+        if (!canUseUrgent && priority == Priority.URGENT) priority = Priority.NORMAL
+    }
 
     Scaffold(
         topBar = {
@@ -118,30 +128,52 @@ fun CreateTransactionScreen(
                 singleLine    = true,
             )
 
-            // اسم الشعبة — Division dropdown
-            ExposedDropdownMenuBox(
-                expanded        = divisionExpanded,
-                onExpandedChange = { divisionExpanded = it },
-            ) {
+            // اسم الشعبة — Division dropdown (locked to own division for scoped roles)
+            if (canPickDivision) {
+                ExposedDropdownMenuBox(
+                    expanded        = divisionExpanded,
+                    onExpandedChange = { divisionExpanded = it },
+                ) {
+                    OutlinedTextField(
+                        value         = division.labelAr,
+                        onValueChange = {},
+                        readOnly      = true,
+                        label         = { Text("الشعبة *") },
+                        trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(divisionExpanded) },
+                        modifier      = Modifier.fillMaxWidth().menuAnchor(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded        = divisionExpanded,
+                        onDismissRequest = { divisionExpanded = false },
+                    ) {
+                        Department.entries.forEach { dept ->
+                            DropdownMenuItem(
+                                text    = { Text(dept.labelAr) },
+                                onClick = { division = dept; divisionExpanded = false },
+                            )
+                        }
+                    }
+                }
+            } else {
                 OutlinedTextField(
                     value         = division.labelAr,
                     onValueChange = {},
                     readOnly      = true,
-                    label         = { Text("الشعبة *") },
-                    trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(divisionExpanded) },
-                    modifier      = Modifier.fillMaxWidth().menuAnchor(),
+                    enabled       = false,
+                    label         = { Text("الشعبة") },
+                    modifier      = Modifier.fillMaxWidth(),
                 )
-                ExposedDropdownMenu(
-                    expanded        = divisionExpanded,
-                    onDismissRequest = { divisionExpanded = false },
-                ) {
-                    Department.entries.forEach { dept ->
-                        DropdownMenuItem(
-                            text    = { Text(dept.labelAr) },
-                            onClick = { division = dept; divisionExpanded = false },
-                        )
-                    }
-                }
+            }
+
+            // العمر الافتراضي — خاص بشعبة المستهلكات الطبية فقط
+            if (division == Department.MEDICAL_CONSUMABLES) {
+                OutlinedTextField(
+                    value         = defaultShelfLife,
+                    onValueChange = { defaultShelfLife = it },
+                    label         = { Text("العمر الافتراضي") },
+                    modifier      = Modifier.fillMaxWidth(),
+                    singleLine    = true,
+                )
             }
 
             // اسم الشركة الموردة
@@ -173,6 +205,31 @@ fun CreateTransactionScreen(
                         label    = { Text(b.labelAr) },
                     )
                 }
+            }
+
+            // وزن الشحنة
+            OutlinedTextField(
+                value           = weightKg,
+                onValueChange   = { weightKg = it },
+                label           = { Text("الوزن (كغم)") },
+                modifier        = Modifier.fillMaxWidth(),
+                singleLine      = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            )
+
+            // هل الشحنة مبرّدة
+            Text("نوع الشحنة *", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = isRefrigerated,
+                    onClick  = { isRefrigerated = true },
+                    label    = { Text("مبرّدة") },
+                )
+                FilterChip(
+                    selected = !isRefrigerated,
+                    onClick  = { isRefrigerated = false },
+                    label    = { Text("غير مبرّدة") },
+                )
             }
 
             HorizontalDivider()
@@ -243,12 +300,21 @@ fun CreateTransactionScreen(
             Text("الأولوية", style = MaterialTheme.typography.labelLarge)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Priority.entries.forEach { p ->
+                    val enabled = p != Priority.URGENT || canUseUrgent
                     FilterChip(
                         selected = priority == p,
                         onClick  = { priority = p },
                         label    = { Text(p.labelAr) },
+                        enabled  = enabled,
                     )
                 }
+            }
+            if (!canUseUrgent) {
+                Text(
+                    text  = "الأولوية \"عاجل\" متاحة فقط للشحنات الخاصة بالخدمات الطبية الملكية والمبرّدة",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             // ملاحظات
@@ -287,6 +353,9 @@ fun CreateTransactionScreen(
                             expectedArrivalDate = expectedArrivalDate,
                             notes               = notes,
                             priority            = priority,
+                            weightKg            = weightKg,
+                            isRefrigerated      = isRefrigerated,
+                            defaultShelfLife    = if (division == Department.MEDICAL_CONSUMABLES) defaultShelfLife else "",
                             createdByUserId     = it.user.id,
                         )
                     }

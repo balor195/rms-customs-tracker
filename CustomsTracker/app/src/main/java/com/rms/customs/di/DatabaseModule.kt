@@ -7,7 +7,6 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.rms.customs.data.local.dao.ActivityLogDao
 import com.rms.customs.data.local.dao.DocumentDao
 import com.rms.customs.data.local.dao.NotificationDao
-import com.rms.customs.data.local.dao.PhaseRecordDao
 import com.rms.customs.data.local.dao.SlaConfigDao
 import com.rms.customs.data.local.dao.TransactionDao
 import com.rms.customs.data.local.dao.UserDao
@@ -33,25 +32,33 @@ object DatabaseModule {
     fun provideDatabase(@ApplicationContext context: Context): CustomsDatabase {
         var db: CustomsDatabase? = null
         val callback = object : RoomDatabase.Callback() {
-            override fun onCreate(sqLiteDb: SupportSQLiteDatabase) {
-                // Seed default SLA configs on first database creation
+            override fun onOpen(sqLiteDb: SupportSQLiteDatabase) {
+                // Seed default SLA configs whenever the table is empty (fresh install,
+                // or right after a migration that cleared stale phase-numbered rows)
                 CoroutineScope(Dispatchers.IO).launch {
                     val dao = db?.slaConfigDao() ?: return@launch
-                    SlaConfigDefaults.all.forEach { config ->
-                        dao.upsert(config.toEntity())
+                    if (dao.count() == 0) {
+                        SlaConfigDefaults.all.forEach { config ->
+                            dao.upsert(config.toEntity())
+                        }
                     }
                 }
             }
         }
         return Room.databaseBuilder(context, CustomsDatabase::class.java, "customs_tracker.db")
-            .addMigrations(CustomsDatabase.MIGRATION_1_2)
+            .addMigrations(
+                CustomsDatabase.MIGRATION_1_2,
+                CustomsDatabase.MIGRATION_2_3,
+                CustomsDatabase.MIGRATION_3_4,
+                CustomsDatabase.MIGRATION_4_5,
+                CustomsDatabase.MIGRATION_5_6,
+            )
             .addCallback(callback)
             .build()
             .also { db = it }
     }
 
     @Provides fun provideTransactionDao(db: CustomsDatabase): TransactionDao = db.transactionDao()
-    @Provides fun providePhaseRecordDao(db: CustomsDatabase): PhaseRecordDao = db.phaseRecordDao()
     @Provides fun provideDocumentDao(db: CustomsDatabase): DocumentDao = db.documentDao()
     @Provides fun provideActivityLogDao(db: CustomsDatabase): ActivityLogDao = db.activityLogDao()
     @Provides fun provideSlaConfigDao(db: CustomsDatabase): SlaConfigDao = db.slaConfigDao()

@@ -133,7 +133,10 @@ fun UserManagementScreen(
         ChangeRoleDialog(
             user      = user,
             onDismiss = { roleDialogUser = null },
-            onConfirm = { role -> viewModel.updateRole(user.id, role); roleDialogUser = null },
+            onConfirm = { role, department ->
+                viewModel.updateRole(user.id, role, department)
+                roleDialogUser = null
+            },
         )
     }
 }
@@ -176,8 +179,11 @@ private fun UserCard(
                     fontWeight = FontWeight.Bold)
                 Text("@${user.username}", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(user.role.labelAr, style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary)
+                Text(
+                    text  = user.department?.let { "${user.role.labelAr} — ${it.labelAr}" } ?: user.role.labelAr,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
             }
 
             // Actions
@@ -255,20 +261,22 @@ private fun CreateUserDialog(
                         }
                     }
                 }
-                // Department selector
-                ExposedDropdownMenuBox(expanded = deptExpanded, onExpandedChange = { deptExpanded = it }) {
-                    OutlinedTextField(
-                        value = form.department.labelAr, onValueChange = {},
-                        readOnly = true, label = { Text("القسم") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(deptExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    )
-                    ExposedDropdownMenu(expanded = deptExpanded, onDismissRequest = { deptExpanded = false }) {
-                        Department.entries.forEach { dept ->
-                            DropdownMenuItem(
-                                text = { Text(dept.labelAr) },
-                                onClick = { form = form.copy(department = dept); deptExpanded = false },
-                            )
+                // Department selector — hidden for roles that see every division
+                if (!form.role.seesAllDivisions) {
+                    ExposedDropdownMenuBox(expanded = deptExpanded, onExpandedChange = { deptExpanded = it }) {
+                        OutlinedTextField(
+                            value = form.department.labelAr, onValueChange = {},
+                            readOnly = true, label = { Text("الشعبة *") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(deptExpanded) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        )
+                        ExposedDropdownMenu(expanded = deptExpanded, onDismissRequest = { deptExpanded = false }) {
+                            Department.entries.forEach { dept ->
+                                DropdownMenuItem(
+                                    text = { Text(dept.labelAr) },
+                                    onClick = { form = form.copy(department = dept); deptExpanded = false },
+                                )
+                            }
                         }
                     }
                 }
@@ -285,33 +293,57 @@ private fun CreateUserDialog(
 private fun ChangeRoleDialog(
     user: User,
     onDismiss: () -> Unit,
-    onConfirm: (UserRole) -> Unit,
+    onConfirm: (UserRole, Department?) -> Unit,
 ) {
     var selectedRole by remember { mutableStateOf(user.role) }
-    var expanded     by remember { mutableStateOf(false) }
+    var selectedDept by remember { mutableStateOf(user.department ?: Department.PHARMACY) }
+    var roleExpanded by remember { mutableStateOf(false) }
+    var deptExpanded  by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("تغيير دور: ${user.displayNameAr}") },
         text = {
-            ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-                OutlinedTextField(
-                    value = selectedRole.labelAr, onValueChange = {},
-                    readOnly = true, label = { Text("الدور الجديد") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                )
-                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    UserRole.entries.forEach { role ->
-                        DropdownMenuItem(
-                            text = { Text(role.labelAr) },
-                            onClick = { selectedRole = role; expanded = false },
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ExposedDropdownMenuBox(expanded = roleExpanded, onExpandedChange = { roleExpanded = it }) {
+                    OutlinedTextField(
+                        value = selectedRole.labelAr, onValueChange = {},
+                        readOnly = true, label = { Text("الدور الجديد") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(roleExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    )
+                    ExposedDropdownMenu(expanded = roleExpanded, onDismissRequest = { roleExpanded = false }) {
+                        UserRole.entries.forEach { role ->
+                            DropdownMenuItem(
+                                text = { Text(role.labelAr) },
+                                onClick = { selectedRole = role; roleExpanded = false },
+                            )
+                        }
+                    }
+                }
+                if (!selectedRole.seesAllDivisions) {
+                    ExposedDropdownMenuBox(expanded = deptExpanded, onExpandedChange = { deptExpanded = it }) {
+                        OutlinedTextField(
+                            value = selectedDept.labelAr, onValueChange = {},
+                            readOnly = true, label = { Text("الشعبة *") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(deptExpanded) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
                         )
+                        ExposedDropdownMenu(expanded = deptExpanded, onDismissRequest = { deptExpanded = false }) {
+                            Department.entries.forEach { dept ->
+                                DropdownMenuItem(
+                                    text = { Text(dept.labelAr) },
+                                    onClick = { selectedDept = dept; deptExpanded = false },
+                                )
+                            }
+                        }
                     }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { onConfirm(selectedRole) }) { Text("حفظ") } },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selectedRole, selectedDept) }) { Text("حفظ") }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } },
     )
 }

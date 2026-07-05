@@ -71,6 +71,7 @@ fun AppNavGraph(authViewModel: AuthViewModel = hiltViewModel()) {
                     MainScreen(
                         navController = navController,
                         onLogout      = authViewModel::logout,
+                        onExitViewAs  = authViewModel::exitViewAs,
                     )
                 }
             }
@@ -131,6 +132,7 @@ fun AppNavGraph(authViewModel: AuthViewModel = hiltViewModel()) {
                         onBack                     = { navController.popBackStack() },
                         onNavigateToSlaAdmin       = { navController.navigate(Dest.SLA_ADMIN) },
                         onNavigateToUserManagement = { navController.navigate(Dest.USER_MANAGEMENT) },
+                        onViewAs                   = authViewModel::viewAs,
                     )
                 }
             }

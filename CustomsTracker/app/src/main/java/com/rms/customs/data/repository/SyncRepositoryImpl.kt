@@ -1,7 +1,6 @@
 package com.rms.customs.data.repository
 
 import android.content.Context
-import com.rms.customs.data.local.dao.PhaseRecordDao
 import com.rms.customs.data.local.dao.TransactionDao
 import com.rms.customs.data.remote.api.CustomsApi
 import com.rms.customs.data.remote.dto.SyncPushRequest
@@ -18,7 +17,6 @@ class SyncRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val api: CustomsApi,
     private val transactionDao: TransactionDao,
-    private val phaseRecordDao: PhaseRecordDao,
 ) : SyncRepository {
 
     private val prefs by lazy {
@@ -43,10 +41,7 @@ class SyncRepositoryImpl @Inject constructor(
         val modified = transactionDao.getModifiedSince(since)
         if (modified.isEmpty()) return 0
 
-        val dtos = modified.map { tx ->
-            val phases = phaseRecordDao.getAllForTransaction(tx.id)
-            tx.toSyncDto(phases)
-        }
+        val dtos = modified.map { tx -> tx.toSyncDto() }
 
         val response = api.push(
             SyncPushRequest(
@@ -64,9 +59,6 @@ class SyncRepositoryImpl @Inject constructor(
 
         response.transactions.forEach { dto ->
             transactionDao.insert(dto.toEntity())
-            dto.phaseRecords.forEach { pdto ->
-                phaseRecordDao.insert(pdto.toEntity())
-            }
         }
 
         setLastSyncTime(response.serverTimeMs)
