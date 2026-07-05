@@ -2,6 +2,7 @@ package com.rms.customs.domain.usecase
 
 import com.rms.customs.domain.model.Transaction
 import com.rms.customs.domain.model.User
+import com.rms.customs.domain.model.enums.TransactionPhase
 import com.rms.customs.domain.model.enums.UserRole
 import com.rms.customs.domain.model.enums.toPhase
 
@@ -11,6 +12,6 @@ import com.rms.customs.domain.model.enums.toPhase
  * Supervisor/Viewer/TenderOfficer are confined to their own division.
  */
 fun Transaction.isVisibleTo(user: User): Boolean = when (user.role) {
-    UserRole.WAREHOUSE -> currentStatus.toPhase().number >= 2
+    UserRole.WAREHOUSE -> currentStatus.toPhase().number >= TransactionPhase.PHASE_3_CLEARANCE.number
     else -> if (user.role.seesAllDivisions) true else division == user.department
 }

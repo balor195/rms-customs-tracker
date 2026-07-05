@@ -7,7 +7,6 @@ import com.rms.customs.domain.model.Transaction
 import com.rms.customs.domain.model.enums.Beneficiary
 import com.rms.customs.domain.model.enums.Department
 import com.rms.customs.domain.model.enums.Priority
-import com.rms.customs.domain.model.enums.ShipmentStatus
 import com.rms.customs.domain.model.enums.TransactionPhase
 import com.rms.customs.domain.model.enums.TransactionStatus
 import java.util.UUID
@@ -37,7 +36,6 @@ data class TransactionEntity(
     val currency: String,
     val expectedArrivalDate: Long?,         // millis
     val actualArrivalDate: Long?,           // millis
-    val shipmentStatus: String,             // ShipmentStatus.name
     val weightKg: Double?,                  // وزن الشحنة (كغم)
     val isRefrigerated: Boolean,            // هل الشحنة مبرّدة
     val defaultShelfLife: String?,          // العمر الافتراضي (شعبة المستهلكات فقط)
@@ -68,7 +66,6 @@ fun TransactionEntity.toDomain() = Transaction(
     currency = currency,
     expectedArrivalDate = expectedArrivalDate,
     actualArrivalDate = actualArrivalDate,
-    shipmentStatus = ShipmentStatus.valueOf(shipmentStatus),
     weightKg = weightKg,
     isRefrigerated = isRefrigerated,
     defaultShelfLife = defaultShelfLife,
@@ -99,7 +96,6 @@ fun Transaction.toEntity() = TransactionEntity(
     currency = currency,
     expectedArrivalDate = expectedArrivalDate,
     actualArrivalDate = actualArrivalDate,
-    shipmentStatus = shipmentStatus.name,
     weightKg = weightKg,
     isRefrigerated = isRefrigerated,
     defaultShelfLife = defaultShelfLife,

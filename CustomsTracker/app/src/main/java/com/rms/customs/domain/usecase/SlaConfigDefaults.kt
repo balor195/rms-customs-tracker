@@ -8,18 +8,18 @@ object SlaConfigDefaults {
     // Default SLA targets from RMS Jordan customs clearance workflow.
     // All values are in calendar days. Admins can override via Phase 10 settings.
     val all: List<SlaConfig> = listOf(
-        // Phase 1 — Tender Preparation
+        // Phase 1 — Transaction Preparation
         SlaConfig(UUID.randomUUID(), phaseNumber = 1, subPhase = "1.1",
             targetDays = 30, escalationAfterDays = 45),
         SlaConfig(UUID.randomUUID(), phaseNumber = 1, subPhase = "1.2",
             targetDays = 14, escalationAfterDays = 21),
 
-        // Phase 2 — Clearance Request
+        // Phase 2 — Shipment Arrival at Airport
         SlaConfig(UUID.randomUUID(), phaseNumber = 2, subPhase = "2.1",
-            targetDays = 5, escalationAfterDays = 7),
+            targetDays = 15, escalationAfterDays = 20),
 
-        // Phase 3 — Financial Settlement
+        // Phase 3 — Clearance
         SlaConfig(UUID.randomUUID(), phaseNumber = 3, subPhase = "3.1",
-            targetDays = 30, escalationAfterDays = 45),
+            targetDays = 5, escalationAfterDays = 7),
     )
 }

@@ -6,7 +6,6 @@ import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import com.rms.customs.domain.model.Transaction
 import com.rms.customs.domain.model.enums.Department
-import com.rms.customs.domain.model.enums.ShipmentStatus
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.text.SimpleDateFormat
@@ -156,7 +155,7 @@ class PdfExporter @Inject constructor(
 
     fun generateExpectedShipments(txs: List<Transaction>): File {
         val expected = txs
-            .filter { it.shipmentStatus == ShipmentStatus.EXPECTED }
+            .filter { it.currentPhase.number < 2 }
             .sortedWith(compareBy(nullsLast()) { it.expectedArrivalDate })
 
         val rows = expected.map { tx ->

@@ -26,7 +26,7 @@ import com.rms.customs.data.local.entity.UserEntity
         UserEntity::class,
         NotificationEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 abstract class CustomsDatabase : RoomDatabase() {
@@ -129,6 +129,83 @@ abstract class CustomsDatabase : RoomDatabase() {
                 db.execSQL("UPDATE transactions SET currentPhase = 'PHASE_4_WAREHOUSE_CONFIRMATION' WHERE currentPhase = 'PHASE_5_WAREHOUSE_CONFIRMATION'")
 
                 // SLA sub-phase numbering shifted (old phase 3 removed, old phase 4 is now phase 3) — reseed cleanly.
+                db.execSQL("DELETE FROM sla_configs")
+            }
+        }
+
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Workflow simplified again: "نشر المناقصة" and the whole "التسوية المالية" phase
+                // removed; a new "وصلت الشحنة للمطار" step inserted between tender prep and clearance.
+                // Remap any existing rows in now-removed statuses forward.
+                db.execSQL("UPDATE transactions SET currentStatus = 'TENDER_PREPARATION' WHERE currentStatus = 'TENDER_PUBLISHED'")
+                db.execSQL("UPDATE transactions SET currentStatus = 'CLEARANCE_ISSUED' WHERE currentStatus IN ('FINANCIAL_SETTLEMENT_PENDING', 'CLOSED')")
+
+                // Old phase enum constants renamed/renumbered (clearance shifted from phase 2 to phase 3;
+                // the removed financial phase's transactions now sit at the clearance phase too).
+                db.execSQL("UPDATE transactions SET currentPhase = 'PHASE_3_CLEARANCE' WHERE currentPhase IN ('PHASE_2_CLEARANCE', 'PHASE_3_FINANCIAL')")
+
+                // Drop the now-redundant shipmentStatus column (SQLite can't drop a column via
+                // ALTER TABLE on this SQLite version, so the table is recreated).
+                db.execSQL(
+                    """
+                    CREATE TABLE transactions_new (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        transactionRef TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        division TEXT,
+                        accreditationNumber TEXT,
+                        billOfLadingNumber TEXT,
+                        responsibleOfficer TEXT NOT NULL,
+                        beneficiary TEXT,
+                        tenderRef TEXT,
+                        contractRef TEXT,
+                        supplierName TEXT NOT NULL,
+                        totalValue REAL,
+                        currency TEXT NOT NULL,
+                        expectedArrivalDate INTEGER,
+                        actualArrivalDate INTEGER,
+                        weightKg REAL,
+                        isRefrigerated INTEGER NOT NULL,
+                        defaultShelfLife TEXT,
+                        currentPhase TEXT NOT NULL,
+                        currentStatus TEXT NOT NULL,
+                        exceptionState TEXT,
+                        priority TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        createdByUserId TEXT NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        closedAt INTEGER,
+                        notes TEXT
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO transactions_new (
+                        id, transactionRef, title, division, accreditationNumber, billOfLadingNumber,
+                        responsibleOfficer, beneficiary, tenderRef, contractRef, supplierName, totalValue,
+                        currency, expectedArrivalDate, actualArrivalDate, weightKg, isRefrigerated,
+                        defaultShelfLife, currentPhase, currentStatus, exceptionState, priority,
+                        createdAt, createdByUserId, updatedAt, closedAt, notes
+                    )
+                    SELECT
+                        id, transactionRef, title, division, accreditationNumber, billOfLadingNumber,
+                        responsibleOfficer, beneficiary, tenderRef, contractRef, supplierName, totalValue,
+                        currency, expectedArrivalDate, actualArrivalDate, weightKg, isRefrigerated,
+                        defaultShelfLife, currentPhase, currentStatus, exceptionState, priority,
+                        createdAt, createdByUserId, updatedAt, closedAt, notes
+                    FROM transactions
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE transactions")
+                db.execSQL("ALTER TABLE transactions_new RENAME TO transactions")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_transactions_transactionRef` ON `transactions` (`transactionRef`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_currentStatus` ON `transactions` (`currentStatus`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_updatedAt` ON `transactions` (`updatedAt`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_accreditationNumber` ON `transactions` (`accreditationNumber`)")
+
+                // SLA sub-phase numbering shifted again — reseed cleanly.
                 db.execSQL("DELETE FROM sla_configs")
             }
         }

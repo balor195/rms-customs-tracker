@@ -5,8 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rms.customs.domain.model.ActivityLog
 import com.rms.customs.domain.model.Transaction
-import com.rms.customs.domain.model.enums.ShipmentStatus
 import com.rms.customs.domain.model.enums.TransactionStatus
+import com.rms.customs.domain.model.enums.UserRole
 import com.rms.customs.domain.repository.TransactionRepository
 import com.rms.customs.domain.statemachine.TransactionStateMachine
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -49,10 +49,10 @@ class TransactionDetailViewModel @Inject constructor(
         return stateMachine.nextForwardStatus(from)
     }
 
-    fun advanceStatus(newStatus: TransactionStatus, actorUserId: UUID) {
+    fun advanceStatus(newStatus: TransactionStatus, actorUserId: UUID, actorRole: UserRole) {
         viewModelScope.launch {
             _transitionState.value = TransitionUiState.Loading
-            runCatching { transactionRepository.advanceStatus(txId, newStatus, actorUserId) }
+            runCatching { transactionRepository.advanceStatus(txId, newStatus, actorUserId, actorRole) }
                 .onSuccess { _transitionState.value = TransitionUiState.Success }
                 .onFailure { _transitionState.value = TransitionUiState.Error(it.message ?: "خطأ غير معروف") }
         }
@@ -88,20 +88,6 @@ class TransactionDetailViewModel @Inject constructor(
     }
 
     fun resetTransitionState() { _transitionState.value = TransitionUiState.Idle }
-
-    fun updateShipmentStatus(newStatus: ShipmentStatus) {
-        viewModelScope.launch {
-            val tx = transaction.value ?: return@launch
-            val now = System.currentTimeMillis()
-            transactionRepository.update(
-                tx.copy(
-                    shipmentStatus    = newStatus,
-                    actualArrivalDate = if (newStatus == ShipmentStatus.ARRIVED) now else tx.actualArrivalDate,
-                    updatedAt         = now,
-                )
-            )
-        }
-    }
 
     fun updateBillOfLading(number: String) {
         viewModelScope.launch {

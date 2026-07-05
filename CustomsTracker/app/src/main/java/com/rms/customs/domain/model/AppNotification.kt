@@ -8,6 +8,7 @@ enum class NotificationType {
     PHASE_BLOCKED,
     DOC_MISSING,
     PHASE_ADVANCED,
+    TRANSACTION_CLOSED,
     MANUAL;
 }
 

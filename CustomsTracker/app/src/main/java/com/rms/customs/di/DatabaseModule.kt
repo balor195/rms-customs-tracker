@@ -52,6 +52,7 @@ object DatabaseModule {
                 CustomsDatabase.MIGRATION_3_4,
                 CustomsDatabase.MIGRATION_4_5,
                 CustomsDatabase.MIGRATION_5_6,
+                CustomsDatabase.MIGRATION_6_7,
             )
             .addCallback(callback)
             .build()

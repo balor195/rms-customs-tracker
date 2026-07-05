@@ -15,16 +15,14 @@ sealed class TransitionResult {
 class TransactionStateMachine @Inject constructor() {
 
     private val allowedTransitions: Map<TransactionStatus, Set<TransactionStatus>> = mapOf(
-        DRAFT                        to setOf(TENDER_PREPARATION),
-        TENDER_PREPARATION           to setOf(TENDER_PUBLISHED),
-        TENDER_PUBLISHED             to setOf(CLEARANCE_ISSUED),
-        CLEARANCE_ISSUED             to setOf(FINANCIAL_SETTLEMENT_PENDING),
-        FINANCIAL_SETTLEMENT_PENDING to setOf(CLOSED),
-        CLOSED                       to setOf(TRANSFERRED_TO_WAREHOUSE),
+        DRAFT               to setOf(TENDER_PREPARATION),
+        TENDER_PREPARATION  to setOf(ARRIVED_AT_AIRPORT),
+        ARRIVED_AT_AIRPORT  to setOf(CLEARANCE_ISSUED),
+        CLEARANCE_ISSUED    to setOf(TRANSFERRED_TO_WAREHOUSE),
         // Exception state transitions
-        BLOCKED                      to setOf(TENDER_PREPARATION, FINANCIAL_SETTLEMENT_PENDING),
-        ON_HOLD                      to setOf(TENDER_PREPARATION, FINANCIAL_SETTLEMENT_PENDING),
-        DISPUTED                     to setOf(FINANCIAL_SETTLEMENT_PENDING),
+        BLOCKED             to setOf(TENDER_PREPARATION, ARRIVED_AT_AIRPORT),
+        ON_HOLD             to setOf(TENDER_PREPARATION, ARRIVED_AT_AIRPORT),
+        DISPUTED            to setOf(CLEARANCE_ISSUED),
     )
 
     fun canAdvance(from: TransactionStatus, to: TransactionStatus): Boolean =
@@ -46,22 +44,6 @@ class TransactionStateMachine @Inject constructor() {
             )
         }
 
-        // Hard gates
-        val gateFailure = checkHardGates(transaction, to)
-        if (gateFailure != null) return gateFailure
-
         return TransitionResult.Success(to)
-    }
-
-    private fun checkHardGates(transaction: Transaction, to: TransactionStatus): TransitionResult.Failure? {
-        // Gate: No warehouse-transfer confirmation without financial closing — this is also
-        // the transaction's closing action (isTerminal), performed only by WAREHOUSE/ADMIN.
-        if (to == TRANSFERRED_TO_WAREHOUSE && transaction.currentStatus != CLOSED) {
-            return TransitionResult.Failure(
-                "لا يمكن تأكيد النقل للمستودعات قبل إغلاق المعاملة مالياً / Cannot confirm warehouse transfer before financial closing"
-            )
-        }
-
-        return null
     }
 }

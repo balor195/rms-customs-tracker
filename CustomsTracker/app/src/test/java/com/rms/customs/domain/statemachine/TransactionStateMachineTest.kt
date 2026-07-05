@@ -52,60 +52,44 @@ class TransactionStateMachineTest {
     @Test fun `DRAFT to TENDER_PREPARATION succeeds`() =
         assertSuccess(machine.advance(tx(DRAFT), TENDER_PREPARATION))
 
-    @Test fun `TENDER_PREPARATION to TENDER_PUBLISHED succeeds`() =
-        assertSuccess(machine.advance(tx(TENDER_PREPARATION), TENDER_PUBLISHED))
+    @Test fun `TENDER_PREPARATION to ARRIVED_AT_AIRPORT succeeds`() =
+        assertSuccess(machine.advance(tx(TENDER_PREPARATION), ARRIVED_AT_AIRPORT))
 
-    @Test fun `TENDER_PUBLISHED to CLEARANCE_ISSUED succeeds`() =
-        assertSuccess(machine.advance(tx(TENDER_PUBLISHED), CLEARANCE_ISSUED))
+    @Test fun `ARRIVED_AT_AIRPORT to CLEARANCE_ISSUED succeeds`() =
+        assertSuccess(machine.advance(tx(ARRIVED_AT_AIRPORT), CLEARANCE_ISSUED))
 
-    @Test fun `CLEARANCE_ISSUED to FINANCIAL_SETTLEMENT_PENDING succeeds`() =
-        assertSuccess(machine.advance(tx(CLEARANCE_ISSUED), FINANCIAL_SETTLEMENT_PENDING))
-
-    @Test fun `FINANCIAL_SETTLEMENT_PENDING to CLOSED succeeds`() =
-        assertSuccess(machine.advance(tx(FINANCIAL_SETTLEMENT_PENDING), CLOSED))
-
-    @Test fun `CLOSED to TRANSFERRED_TO_WAREHOUSE succeeds`() =
-        assertSuccess(machine.advance(tx(CLOSED), TRANSFERRED_TO_WAREHOUSE))
+    @Test fun `CLEARANCE_ISSUED to TRANSFERRED_TO_WAREHOUSE succeeds`() =
+        assertSuccess(machine.advance(tx(CLEARANCE_ISSUED), TRANSFERRED_TO_WAREHOUSE))
 
     // ── Invalid skip transitions ───────────────────────────────────────────
 
-    @Test fun `DRAFT cannot skip to CLEARANCE_ISSUED`() =
-        assertFailure(machine.advance(tx(DRAFT), CLEARANCE_ISSUED))
+    @Test fun `DRAFT cannot skip to ARRIVED_AT_AIRPORT`() =
+        assertFailure(machine.advance(tx(DRAFT), ARRIVED_AT_AIRPORT))
 
-    @Test fun `TENDER_PREPARATION cannot skip to FINANCIAL_SETTLEMENT_PENDING`() =
-        assertFailure(machine.advance(tx(TENDER_PREPARATION), FINANCIAL_SETTLEMENT_PENDING))
+    @Test fun `TENDER_PREPARATION cannot skip to CLEARANCE_ISSUED`() =
+        assertFailure(machine.advance(tx(TENDER_PREPARATION), CLEARANCE_ISSUED))
 
-    @Test fun `CLEARANCE_ISSUED cannot skip to CLOSED`() =
-        assertFailure(machine.advance(tx(CLEARANCE_ISSUED), CLOSED))
+    @Test fun `ARRIVED_AT_AIRPORT cannot skip to TRANSFERRED_TO_WAREHOUSE`() =
+        assertFailure(machine.advance(tx(ARRIVED_AT_AIRPORT), TRANSFERRED_TO_WAREHOUSE))
 
-    @Test fun `CLEARANCE_ISSUED cannot skip to TRANSFERRED_TO_WAREHOUSE`() =
-        assertFailure(machine.advance(tx(CLEARANCE_ISSUED), TRANSFERRED_TO_WAREHOUSE))
+    @Test fun `TENDER_PREPARATION cannot skip to TRANSFERRED_TO_WAREHOUSE`() =
+        assertFailure(machine.advance(tx(TENDER_PREPARATION), TRANSFERRED_TO_WAREHOUSE))
 
     // ── Invalid reverse transitions ────────────────────────────────────────
 
-    @Test fun `CLEARANCE_ISSUED cannot go back to TENDER_PREPARATION`() =
-        assertFailure(machine.advance(tx(CLEARANCE_ISSUED), TENDER_PREPARATION))
+    @Test fun `ARRIVED_AT_AIRPORT cannot go back to TENDER_PREPARATION`() =
+        assertFailure(machine.advance(tx(ARRIVED_AT_AIRPORT), TENDER_PREPARATION))
 
-    @Test fun `CLOSED cannot go back to FINANCIAL_SETTLEMENT_PENDING`() =
-        assertFailure(machine.advance(tx(CLOSED), FINANCIAL_SETTLEMENT_PENDING))
+    @Test fun `CLEARANCE_ISSUED cannot go back to ARRIVED_AT_AIRPORT`() =
+        assertFailure(machine.advance(tx(CLEARANCE_ISSUED), ARRIVED_AT_AIRPORT))
 
     // ── Terminal state ─────────────────────────────────────────────────────
 
     @Test fun `TRANSFERRED_TO_WAREHOUSE rejects any further transition`() {
-        assertFailure(machine.advance(tx(TRANSFERRED_TO_WAREHOUSE), CLOSED))
+        assertFailure(machine.advance(tx(TRANSFERRED_TO_WAREHOUSE), CLEARANCE_ISSUED))
         assertFailure(machine.advance(tx(TRANSFERRED_TO_WAREHOUSE), TENDER_PREPARATION))
         assertFailure(machine.advance(tx(TRANSFERRED_TO_WAREHOUSE), BLOCKED))
     }
-
-    // ── Hard Gate: TRANSFERRED_TO_WAREHOUSE requires CLOSED ─────────────────
-
-    @Test fun `Hard Gate - cannot confirm warehouse transfer before financial closing`() {
-        val result = machine.advance(tx(FINANCIAL_SETTLEMENT_PENDING), TRANSFERRED_TO_WAREHOUSE)
-        assertFailure(result)
-    }
-
-    @Test fun `Hard Gate - TRANSFERRED_TO_WAREHOUSE succeeds when current is CLOSED`() =
-        assertSuccess(machine.advance(tx(CLOSED), TRANSFERRED_TO_WAREHOUSE))
 
     // ── canAdvance helper ──────────────────────────────────────────────────
 
@@ -113,7 +97,7 @@ class TransactionStateMachineTest {
         assertTrue(machine.canAdvance(DRAFT, TENDER_PREPARATION))
 
     @Test fun `canAdvance returns false for invalid transition`() =
-        assertTrue(!machine.canAdvance(DRAFT, CLOSED))
+        assertTrue(!machine.canAdvance(DRAFT, TRANSFERRED_TO_WAREHOUSE))
 
     // ── Result content ─────────────────────────────────────────────────────
 

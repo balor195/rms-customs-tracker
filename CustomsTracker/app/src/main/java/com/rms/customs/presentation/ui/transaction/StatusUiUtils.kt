@@ -3,17 +3,14 @@ package com.rms.customs.presentation.ui.transaction
 import androidx.compose.ui.graphics.Color
 import com.rms.customs.domain.model.enums.LogAction
 import com.rms.customs.domain.model.enums.PhaseStatus
-import com.rms.customs.domain.model.enums.ShipmentStatus
 import com.rms.customs.domain.model.enums.TransactionStatus
 import com.rms.customs.presentation.ui.theme.CustomsColors
 
 fun TransactionStatus.labelAr(): String = when (this) {
     TransactionStatus.DRAFT                        -> "مسودة"
-    TransactionStatus.TENDER_PREPARATION           -> "تحضير المناقصة"
-    TransactionStatus.TENDER_PUBLISHED             -> "نشر المناقصة"
+    TransactionStatus.TENDER_PREPARATION           -> "تحضير المعاملة"
+    TransactionStatus.ARRIVED_AT_AIRPORT           -> "وصلت الشحنة للمطار"
     TransactionStatus.CLEARANCE_ISSUED             -> "تم التخليص"
-    TransactionStatus.FINANCIAL_SETTLEMENT_PENDING -> "انتظار التسوية المالية"
-    TransactionStatus.CLOSED                       -> "التسوية المالية مكتملة"
     TransactionStatus.TRANSFERRED_TO_WAREHOUSE     -> "تم النقل الى المستودعات"
     TransactionStatus.BLOCKED                      -> "محجوبة"
     TransactionStatus.ON_HOLD                      -> "معلّقة"
@@ -25,14 +22,7 @@ fun TransactionStatus.statusColor(): Color = when (this) {
     TransactionStatus.DISPUTED,
     TransactionStatus.TRANSFERRED_TO_WAREHOUSE     -> CustomsColors.Overdue
     TransactionStatus.ON_HOLD                      -> CustomsColors.Warning
-    TransactionStatus.CLOSED                       -> Color(0xFF757575)
     else                                           -> CustomsColors.OnTime
-}
-
-fun ShipmentStatus.statusColor(): Color = when (this) {
-    ShipmentStatus.EXPECTED -> CustomsColors.Warning
-    ShipmentStatus.ARRIVED  -> Color(0xFF1565C0)
-    ShipmentStatus.CLEARED  -> CustomsColors.OnTime
 }
 
 fun PhaseStatus.labelAr(): String = when (this) {

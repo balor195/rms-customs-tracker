@@ -95,16 +95,15 @@ fun DashboardScreen(
             }
         }
 
-        // ── Shipment status breakdown ────────────────────────────────────────
-        item { SectionHeader("حالة الشحنات") }
-        item {
-            ShipmentStatusRow(
-                expected         = stats.shipmentExpected,
-                arrived          = stats.shipmentArrived,
-                cleared          = stats.shipmentCleared,
-                upcomingArrivals = stats.upcomingArrivalsCount,
-                modifier         = Modifier.padding(horizontal = 16.dp),
-            )
+        // ── Upcoming arrivals ─────────────────────────────────────────────────
+        if (stats.upcomingArrivalsCount > 0) {
+            item { SectionHeader("الشحنات القادمة") }
+            item {
+                UpcomingArrivalsBanner(
+                    count    = stats.upcomingArrivalsCount,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
         }
 
         // ── Phase distribution chart ─────────────────────────────────────────
@@ -263,78 +262,40 @@ private fun SummaryCard(
     }
 }
 
-// ── Shipment status breakdown ─────────────────────────────────────────────────
+// ── Upcoming arrivals banner ───────────────────────────────────────────────────
 
-private val ShipmentExpectedColor = Color(0xFFF57F17)
-private val ShipmentArrivedColor  = Color(0xFF1565C0)
-private val ShipmentClearedColor  = Color(0xFF1B5E20)
+private val UpcomingArrivalColor = Color(0xFF1565C0)
 
 @Composable
-private fun ShipmentStatusRow(
-    expected: Int,
-    arrived: Int,
-    cleared: Int,
-    upcomingArrivals: Int,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+private fun UpcomingArrivalsBanner(count: Int, modifier: Modifier = Modifier) {
+    Card(
+        modifier  = modifier.fillMaxWidth(),
+        shape     = RoundedCornerShape(10.dp),
+        colors    = CardDefaults.cardColors(
+            containerColor = UpcomingArrivalColor.copy(alpha = 0.08f),
+        ),
+        elevation = CardDefaults.cardElevation(0.dp),
+    ) {
         Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier          = Modifier
+                .fillMaxWidth()
+                .border(1.dp, UpcomingArrivalColor.copy(alpha = 0.20f), RoundedCornerShape(10.dp))
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            SummaryCard(
-                label       = "متوقع وصولها",
-                value       = expected.toString(),
-                accentColor = ShipmentExpectedColor,
-                icon        = Icons.Default.DateRange,
-                modifier    = Modifier.weight(1f),
+            Icon(
+                imageVector        = Icons.Default.DateRange,
+                contentDescription = null,
+                tint               = UpcomingArrivalColor,
+                modifier           = Modifier.size(16.dp),
             )
-            SummaryCard(
-                label       = "وصلت",
-                value       = arrived.toString(),
-                accentColor = ShipmentArrivedColor,
-                icon        = Icons.Default.Assignment,
-                modifier    = Modifier.weight(1f),
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text       = "$count شحنة متوقع وصولها خلال 7 أيام القادمة",
+                style      = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                color      = UpcomingArrivalColor,
             )
-            SummaryCard(
-                label       = "تم التخليص",
-                value       = cleared.toString(),
-                accentColor = ShipmentClearedColor,
-                icon        = Icons.Default.CheckCircle,
-                modifier    = Modifier.weight(1f),
-            )
-        }
-        if (upcomingArrivals > 0) {
-            Card(
-                modifier  = Modifier.fillMaxWidth(),
-                shape     = RoundedCornerShape(10.dp),
-                colors    = CardDefaults.cardColors(
-                    containerColor = ShipmentArrivedColor.copy(alpha = 0.08f),
-                ),
-                elevation = CardDefaults.cardElevation(0.dp),
-            ) {
-                Row(
-                    modifier          = Modifier
-                        .fillMaxWidth()
-                        .border(1.dp, ShipmentArrivedColor.copy(alpha = 0.20f), RoundedCornerShape(10.dp))
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector        = Icons.Default.DateRange,
-                        contentDescription = null,
-                        tint               = ShipmentArrivedColor,
-                        modifier           = Modifier.size(16.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text       = "$upcomingArrivals شحنة متوقع وصولها خلال 7 أيام القادمة",
-                        style      = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color      = ShipmentArrivedColor,
-                    )
-                }
-            }
         }
     }
 }

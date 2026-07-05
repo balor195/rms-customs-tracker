@@ -534,6 +534,48 @@ User also flagged that closing a transaction reached "مغلقة" *before* the f
 - `Transaction.closedAt` was stamped when reaching `CLOSED` (the intermediate financial-settlement step), not the true terminal `TRANSFERRED_TO_WAREHOUSE` — so dashboard "closed this month" and CSV export duration figures counted transactions as closed a step early. Moved the `closedAt` stamp to `TRANSFERRED_TO_WAREHOUSE`.
 - The `CLOSED` status label "مغلقة" (literally "closed") misleadingly implied the transaction was fully done one step early. Renamed to "التسوية المالية مكتملة" (Financial settlement complete); "مغلقة" is now only ever associated with the true final step.
 
+### 13. Workflow re-simplified to the exact 4-step operational process (user-specified)
+
+User specified the real operational process precisely, which turned out simpler than the milestone-11/12 model: create → tender officer marks shipment arrived at airport → clearance marks cleared → warehouse marks transferred (closes the transaction, notifies everyone). No "نشر المناقصة" step, no separate "التسوية المالية" phase, and no separate "حالة الشحنة" card — that card was in fact the root cause of the earlier dual-clearance-button confusion (milestone 9), so removing it was the right call independent of this simplification.
+
+**New phase/status model (4 phases, replacing the milestone-8 5→4 model):**
+
+| # | Phase | Status | Actor |
+|---|-------|--------|-------|
+| 1 | تحضير المعاملة | `DRAFT`/`TENDER_PREPARATION` | ضابط العطاء creates/edits |
+| 2 | وصلت الشحنة للمطار | `ARRIVED_AT_AIRPORT` *(new)* | ضابط العطاء — exclusive |
+| 3 | تم التخليص | `CLEARANCE_ISSUED` | التخليص — exclusive |
+| 4 | تم النقل الى المستودعات | `TRANSFERRED_TO_WAREHOUSE` | المستودعات — exclusive, terminal, closes the transaction |
+
+- Removed `TENDER_PUBLISHED`, `FINANCIAL_SETTLEMENT_PENDING`, `CLOSED` from `TransactionStatus`; state machine is now a strict single-path chain (no branching, so the old `checkHardGates()` function was removed as redundant — the transition map alone fully enforces order).
+- **Removed `ShipmentStatus` enum, `Transaction.shipmentStatus`, and the `ShipmentStatusCard`/`ShipmentStepIndicator` composables entirely.** `actualArrivalDate` is retained but now auto-stamped by `TransactionRepositoryImpl` when `ARRIVED_AT_AIRPORT` is reached, instead of via a separate manual button.
+- The generic "advance to next phase" button in `TransactionDetailScreen` now shows the specific action label (`nextStatus.labelAr()` — e.g. "وصلت الشحنة للمطار") instead of the generic "تقديم للمرحلة التالية", matching the named-button process description.
+- **New: closure notifications.** Reaching `TRANSFERRED_TO_WAREHOUSE` now creates an `AppNotification` (`NotificationType.TRANSACTION_CLOSED`) and posts an Android system notification via a new `CustomsNotificationManager.postTransactionClosedNotification()` / `CHANNEL_TRANSACTION_CLOSED` channel. Note: `AppNotification` has no per-user targeting (it's a single shared feed), so in the current local-only, unsynced architecture this reaches "all accounts logged into this device" — genuine cross-device/all-org delivery would require the still-unwired Phase-9 backend sync.
+- `DocumentType.requiredPhase` remapped again (clearance's paperwork shifted from phase 2 to phase 3; a new phase-2 bucket added for shipping/transport documents relevant on arrival; the removed financial phase's `PAYMENT_VOUCHER` moved to phase 4 alongside the other closing documents).
+- Dashboard: removed the shipment expected/arrived/cleared 3-card breakdown (redundant with phase distribution now); kept the "upcoming arrivals" banner, re-derived from `currentPhase.number < 2` instead of `shipmentStatus`.
+- `SlaConfigDefaults`/`SlaAdminScreen` sub-phase numbering and labels updated to match.
+- Room bumped **v6 → v7** (`MIGRATION_6_7`): remaps removed statuses/phases forward, recreates `transactions` without the `shipmentStatus` column, reseeds `sla_configs`.
+
+### 14. Warehouse visibility threshold left stale after the phase renumbering in #13 (user-reported)
+
+User reported the same symptom pattern again at "المرحلة 3: تم التخليص" — tender officer able to trigger the advance action before clearance had acted, leaving the transaction unreachable for both Clearance and Warehouse. Re-verified `TransactionDetailScreen`'s `canAdvanceNext` gating and `TransactionRepositoryImpl.advanceStatus`'s role check line-by-line (both from #11) — both are still intact and correct; no way found for `TENDER_OFFICER` to actually complete `CLEARANCE_ISSUED`/`TRANSFERRED_TO_WAREHOUSE` through the app's code paths.
+
+**Bug actually found while re-checking:** `TransactionAccessScope.kt` (`Transaction.isVisibleTo`) still gated `WAREHOUSE` visibility with the *pre-#13* phase number — `currentPhase.number >= 2` — which was correct when Clearance was phase 2, but #13 renumbered Clearance to phase 3 (inserting the new "وصلت الشحنة للمطار" as phase 2) without updating this threshold. Net effect: `WAREHOUSE` could see transactions from `ARRIVED_AT_AIRPORT` onward — i.e. **before** Clearance had acted — rather than only `CLEARANCE_ISSUED` onward as required ("رؤية المعاملات التي تم تخليصها فقط"). This is a visibility leak, not a permission bypass (Warehouse still couldn't act early, since `canAdvanceNext`/the repository check remained correctly gated on the real status) — so on its own it doesn't explain "stuck, nobody can act," but it was a confirmed regression and is fixed now regardless.
+
+**Fix:** Changed the threshold to `TransactionPhase.PHASE_3_CLEARANCE.number` (named reference instead of a magic number, so it can't silently drift again on a future renumbering).
+
+**Status of the core reported symptom:** Not reproduced via code review after two independent passes — `TENDER_OFFICER`'s `canMarkClearanceDone`/`canMarkWarehouseTransferred` are `false`, both the button-visibility check and the repository-layer check (added in #11) correctly block the transition, and no other call path to `advanceStatus` exists. Asked the user to confirm they're testing the freshly rebuilt APK and, if it still reproduces, to report the exact button pressed and whether an error/snackbar appeared — that would point to a genuinely different bug (e.g. the UI somehow bypassing `TransactionRepository.advanceStatus` entirely) than anything found so far.
+
 ### Verification
-- `.\gradlew assembleDebug testDebugUnitTest` — **BUILD SUCCESSFUL**.
-- Please reinstall the freshly-built APK and retest the exact `TENDER_OFFICER` walkthrough — the repository now rejects the clearance/warehouse-transfer calls outright regardless of the UI path, so this should be closed even if the original UI trigger is still unidentified. If it still reproduces, that would mean the UI is somehow bypassing `TransactionRepository.advanceStatus` entirely, which would point to a different bug than anything found so far — please report back with exact tap-by-tap steps if so.
+- `.\gradlew assembleDebug testDebugUnitTest` — **BUILD SUCCESSFUL**, all unit tests passing.
+
+### 15. "View as" impersonation silently re-authorized as the real admin at the repository layer (user-reported)
+
+User confirmed the core workflow (#13/#14) now works correctly, but reported that testing via Admin's "وضع التجربة" (view-as) feature — simulating `CLEARANCE` or `WAREHOUSE` — didn't behave the same as a real dedicated account of that role.
+
+**Root cause:** `AuthViewModel.viewAs()` builds the simulated user via `realUser.copy(role = role, department = department)` — deliberately keeping the same `id` as the real admin so activity is still attributed correctly. But `TransactionRepositoryImpl.advanceStatus`'s permission check (added in #11 as defense-in-depth) re-derived the actor's role by looking the `actorUserId` back up in the `users` table: `userDao.getById(actorUserId)?.role`. Since that ID is always the real admin's ID during a "view as" session — never the simulated role — this lookup always resolved back to `ADMIN`, which passes every permission check unconditionally. In effect, the repository-layer gate was silently a no-op for the entire duration of any "view as" session, regardless of which role was being simulated: it always evaluated as if the real admin (not the simulated role) were the actor. The UI-layer gate (`canAdvanceNext`, correctly keyed off `session.user.role`) still matched the simulated role, so the two layers disagreed — which is exactly the "doesn't work the same way" symptom, since a *real* `CLEARANCE`/`WAREHOUSE`/`TENDER_OFFICER` account has no such split (its DB row's role and its session role are always identical).
+
+**Fix:** `TransactionRepository.advanceStatus`/`TransactionRepositoryImpl.advanceStatus` now take an explicit `actorRole: UserRole` parameter supplied by the caller (`TransactionDetailViewModel.advanceStatus`, in turn from `session.user.role` in `TransactionDetailScreen`) instead of re-deriving it from the DB via `actorUserId`. `session.user.role` is exactly the simulated role during "view as" and exactly the real role otherwise, so both cases are now handled by the same code path with no special-casing. The now-unused `UserDao` injection was removed from `TransactionRepositoryImpl`.
+
+### Verification
+- `.\gradlew assembleDebug testDebugUnitTest` — **BUILD SUCCESSFUL**, all unit tests passing.

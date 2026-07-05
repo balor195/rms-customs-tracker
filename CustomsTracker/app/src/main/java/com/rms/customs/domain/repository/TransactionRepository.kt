@@ -3,6 +3,7 @@ package com.rms.customs.domain.repository
 import com.rms.customs.domain.model.ActivityLog
 import com.rms.customs.domain.model.Transaction
 import com.rms.customs.domain.model.enums.TransactionStatus
+import com.rms.customs.domain.model.enums.UserRole
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
 
@@ -18,6 +19,7 @@ interface TransactionRepository {
         transactionId: UUID,
         newStatus: TransactionStatus,
         actorUserId: UUID,
+        actorRole: UserRole,
         payload: String = "{}",
     )
     suspend fun setExceptionState(

@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -54,7 +53,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -62,7 +60,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rms.customs.domain.model.ActivityLog
 import com.rms.customs.domain.model.Transaction
 import com.rms.customs.domain.model.enums.Department
-import com.rms.customs.domain.model.enums.ShipmentStatus
 import com.rms.customs.domain.model.enums.TransactionStatus
 import com.rms.customs.domain.usecase.isVisibleTo
 import com.rms.customs.presentation.ui.LocalUserSession
@@ -165,7 +162,7 @@ fun TransactionDetailScreen(
                                             checked = false,
                                             onCheckedChange = { checked ->
                                                 if (checked) session?.let {
-                                                    viewModel.advanceStatus(nextStatus, it.user.id)
+                                                    viewModel.advanceStatus(nextStatus, it.user.id, it.user.role)
                                                 }
                                             },
                                             enabled = transState !is TransitionUiState.Loading,
@@ -178,7 +175,7 @@ fun TransactionDetailScreen(
                                     onClick  = { showAdvanceDialog = true },
                                     enabled  = transState !is TransitionUiState.Loading,
                                     modifier = Modifier.weight(1f),
-                                ) { Text("تقديم للمرحلة التالية") }
+                                ) { Text(nextStatus.labelAr()) }
                             }
                             if (canWrite) {
                                 TextButton(
@@ -225,13 +222,6 @@ fun TransactionDetailScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             TransactionHeaderCard(tx)
-            ShipmentStatusCard(
-                tx             = tx,
-                canWrite       = canWrite && !isClosed,
-                canMarkCleared = role?.canMarkClearanceDone == true && !isClosed,
-                onMarkArrived  = { viewModel.updateShipmentStatus(ShipmentStatus.ARRIVED) },
-                onMarkCleared  = { viewModel.updateShipmentStatus(ShipmentStatus.CLEARED) },
-            )
             PhaseTimeline(transaction = tx)
 
             TabRow(selectedTabIndex = selectedTab) {
@@ -265,7 +255,7 @@ fun TransactionDetailScreen(
             fromStatus = tx.exceptionState ?: tx.currentStatus,
             toStatus   = nextStatus,
             isLoading  = transState is TransitionUiState.Loading,
-            onConfirm  = { session?.let { viewModel.advanceStatus(nextStatus, it.user.id) } },
+            onConfirm  = { session?.let { viewModel.advanceStatus(nextStatus, it.user.id, it.user.role) } },
             onDismiss  = { showAdvanceDialog = false },
         )
     }
@@ -377,139 +367,6 @@ private fun TransactionHeaderCard(tx: Transaction) {
     }
 }
 
-// ── Shipment status card ─────────────────────────────────────────────────────
-
-@Composable
-private fun ShipmentStatusCard(
-    tx: Transaction,
-    canWrite: Boolean,
-    canMarkCleared: Boolean,
-    onMarkArrived: () -> Unit,
-    onMarkCleared: () -> Unit,
-) {
-    val status = tx.shipmentStatus
-    Card(
-        modifier  = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(2.dp),
-        colors    = CardDefaults.cardColors(
-            containerColor = status.statusColor().copy(alpha = 0.07f),
-        ),
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(
-                text       = "حالة الشحنة",
-                style      = MaterialTheme.typography.labelMedium,
-                color      = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            // Step indicator: 3 circles + connecting lines
-            ShipmentStepIndicator(current = status)
-
-            // Dates
-            tx.expectedArrivalDate?.let {
-                Text(
-                    text  = "الوصول المتوقع: ${it.toDateString()}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            tx.actualArrivalDate?.let {
-                Text(
-                    text  = "تاريخ الوصول الفعلي: ${it.toDateString()}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = CustomsColors.OnTime,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-
-            // Action button
-            when (status) {
-                ShipmentStatus.EXPECTED -> if (canWrite) {
-                    Button(
-                        onClick  = onMarkArrived,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("تسجيل وصول الشحنة") }
-                }
-
-                ShipmentStatus.ARRIVED -> if (canMarkCleared) {
-                    Button(
-                        onClick  = onMarkCleared,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors   = ButtonDefaults.buttonColors(containerColor = CustomsColors.OnTime),
-                    ) { Text("تأكيد اكتمال التخليص") }
-                }
-
-                ShipmentStatus.CLEARED -> Text(
-                    text  = "✓  تم التخليص النهائي",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = CustomsColors.OnTime,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ShipmentStepIndicator(current: ShipmentStatus) {
-    val steps = ShipmentStatus.entries
-    Row(
-        modifier              = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment     = Alignment.CenterVertically,
-    ) {
-        steps.forEachIndexed { index, step ->
-            val reached = step.ordinal <= current.ordinal
-            val color   = if (reached) step.statusColor() else Color(0xFFBDBDBD)
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.weight(1f),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .background(
-                            color  = if (reached) color else Color.Transparent,
-                            shape  = CircleShape,
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (reached) {
-                        Text("✓", style = MaterialTheme.typography.labelSmall, color = Color.White)
-                    } else {
-                        Box(
-                            Modifier
-                                .size(22.dp)
-                                .background(Color(0xFFBDBDBD), CircleShape)
-                        )
-                    }
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text  = step.labelAr,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = color,
-                )
-            }
-
-            if (index < steps.size - 1) {
-                Box(
-                    Modifier
-                        .weight(0.5f)
-                        .height(2.dp)
-                        .background(
-                            if (step.ordinal < current.ordinal) current.statusColor()
-                            else Color(0xFFBDBDBD)
-                        )
-                )
-            }
-        }
-    }
-}
-
 // ── Details tab ──────────────────────────────────────────────────────────────
 
 @Composable
@@ -553,7 +410,6 @@ private fun DetailsTab(
         }
 
         // ── Shipment ──────────────────────────────────────────────────────
-        DetailRow("حالة الشحنة", tx.shipmentStatus.labelAr)
         if (tx.weightKg != null) DetailRow("الوزن", "${"%.2f".format(tx.weightKg)} كغم")
         DetailRow("نوع الشحنة", if (tx.isRefrigerated) "مبرّدة" else "غير مبرّدة")
         if (tx.expectedArrivalDate != null) {

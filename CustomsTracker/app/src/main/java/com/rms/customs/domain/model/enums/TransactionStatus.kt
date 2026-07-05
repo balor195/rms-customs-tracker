@@ -4,17 +4,15 @@ enum class TransactionStatus {
     // ── Phase 1: Tender Preparation ──────────────────────────────────────
     DRAFT,
     TENDER_PREPARATION,
-    TENDER_PUBLISHED,
 
-    // ── Phase 2: Clearance Request ───────────────────────────────────────
-    CLEARANCE_ISSUED,                  // "تم التخليص" — Hard Gate: nothing after without this
+    // ── Phase 2: Shipment Arrived at Airport ─────────────────────────────
+    ARRIVED_AT_AIRPORT,                // "وصلت الشحنة للمطار" — Tender Officer's exclusive action
 
-    // ── Phase 3: Financial Settlement ────────────────────────────────────
-    FINANCIAL_SETTLEMENT_PENDING,
-    CLOSED,
+    // ── Phase 3: Clearance ────────────────────────────────────────────────
+    CLEARANCE_ISSUED,                  // "تم التخليص" — Clearance's exclusive action
 
     // ── Phase 4: Warehouse Transfer Confirmation ─────────────────────────
-    TRANSFERRED_TO_WAREHOUSE,         // terminal state — "تم النقل الى المستودعات"
+    TRANSFERRED_TO_WAREHOUSE,          // "تم النقل الى المستودعات" — terminal, Warehouse's exclusive action
 
     // ── Exception overlays (stored separately in exceptionState) ─────────
     BLOCKED,

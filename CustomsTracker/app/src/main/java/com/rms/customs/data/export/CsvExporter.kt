@@ -3,7 +3,6 @@ package com.rms.customs.data.export
 import android.content.Context
 import com.rms.customs.domain.model.Transaction
 import com.rms.customs.domain.model.enums.Department
-import com.rms.customs.domain.model.enums.ShipmentStatus
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.text.SimpleDateFormat
@@ -30,7 +29,7 @@ class CsvExporter @Inject constructor(
             w.write("﻿") // BOM for Excel UTF-8
             w.write(
                 "رقم الاعتماد,رقم المعاملة,المورد,الضابط المسؤول,الشعبة," +
-                "المرحلة الحالية,الحالة,حالة الشحنة,الأولوية," +
+                "المرحلة الحالية,الحالة,الأولوية," +
                 "أيام آخر تحديث,تاريخ الإنشاء\n"
             )
             txs.filter { it.isActive }.forEach { tx ->
@@ -42,7 +41,6 @@ class CsvExporter @Inject constructor(
                     "${(tx.division?.labelAr ?: "").csvSafe()}," +
                     "${tx.currentPhase.labelAr.csvSafe()}," +
                     "${tx.currentStatus.name}," +
-                    "${tx.shipmentStatus.labelAr.csvSafe()}," +
                     "${tx.priority.name}," +
                     "${tx.daysSinceUpdate}," +
                     "${dateFmt(tx.createdAt)}\n"
@@ -61,7 +59,7 @@ class CsvExporter @Inject constructor(
             w.write("﻿")
             w.write(
                 "رقم المعاملة,رقم الاعتماد,المورد,عنوان العطاء,الشعبة,الجهة المستفيدة," +
-                "الضابط المسؤول,المرحلة,الحالة,الأولوية,حالة الشحنة," +
+                "الضابط المسؤول,المرحلة,الحالة,الأولوية," +
                 "الوصول المتوقع,الوصول الفعلي,رقم بوليصة الشحن,الوزن (كغم),نوع الشحنة,العمر الافتراضي," +
                 "قيمة العطاء (JOD),تاريخ الإنشاء,تاريخ الإغلاق,أيام الإنجاز\n"
             )
@@ -79,7 +77,6 @@ class CsvExporter @Inject constructor(
                     "${tx.currentPhase.labelAr.csvSafe()}," +
                     "${tx.currentStatus.name}," +
                     "${tx.priority.name}," +
-                    "${tx.shipmentStatus.labelAr.csvSafe()}," +
                     "${tx.expectedArrivalDate?.let { dateFmt(it) } ?: ""}," +
                     "${tx.actualArrivalDate?.let { dateFmt(it) } ?: ""}," +
                     "${(tx.billOfLadingNumber ?: "").csvSafe()}," +
@@ -130,7 +127,7 @@ class CsvExporter @Inject constructor(
 
     fun generateExpectedShipments(txs: List<Transaction>): File {
         val expected = txs
-            .filter { it.shipmentStatus == ShipmentStatus.EXPECTED }
+            .filter { it.currentPhase.number < 2 }
             .sortedWith(compareBy(nullsLast()) { it.expectedArrivalDate })
         val file = File(reportsDir(), "rms_expected_shipments_${ts()}.csv")
 

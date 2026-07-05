@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.rms.customs.domain.model.Transaction
 import com.rms.customs.domain.model.User
 import com.rms.customs.domain.model.enums.Department
-import com.rms.customs.domain.model.enums.ShipmentStatus
 import com.rms.customs.domain.repository.TransactionRepository
 import com.rms.customs.domain.usecase.isVisibleTo
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,10 +28,6 @@ data class DashboardStats(
     val closedThisMonth: Int = 0,
     val phaseDistribution: List<Pair<String, Int>> = emptyList(),
     val avgTotalDays: Double? = null,
-    // Shipment status breakdown
-    val shipmentExpected: Int = 0,
-    val shipmentArrived: Int = 0,
-    val shipmentCleared: Int = 0,
     val upcomingArrivalsCount: Int = 0,
     // Value by division
     val valueByDivision: List<DivisionValueEntry> = emptyList(),
@@ -67,10 +62,10 @@ class DashboardViewModel @Inject constructor(
 
         // ── Phase distribution ───────────────────────────────────────────────
         val phaseGroups = listOf(
-            "المرحلة 1 — إعداد العطاء"       to setOf("TENDER_PREPARATION", "TENDER_PUBLISHED", "DRAFT"),
-            "المرحلة 2 — طلب تخليص"          to setOf("CLEARANCE_ISSUED"),
-            "المرحلة 3 — الإغلاق المالي"     to setOf("FINANCIAL_SETTLEMENT_PENDING", "CLOSED"),
-            "المرحلة 4 — تم النقل للمستودعات" to setOf("TRANSFERRED_TO_WAREHOUSE"),
+            "المرحلة 1 — تحضير المعاملة"        to setOf("TENDER_PREPARATION", "DRAFT"),
+            "المرحلة 2 — وصلت الشحنة للمطار"    to setOf("ARRIVED_AT_AIRPORT"),
+            "المرحلة 3 — تم التخليص"            to setOf("CLEARANCE_ISSUED"),
+            "المرحلة 4 — تم النقل للمستودعات"   to setOf("TRANSFERRED_TO_WAREHOUSE"),
         )
         val phaseDistribution = phaseGroups.map { (label, statuses) ->
             label to txs.count { it.currentStatus.name in statuses && it.isActive }
@@ -82,12 +77,9 @@ class DashboardViewModel @Inject constructor(
             .map { (it.closedAt!! - it.createdAt).toDouble() / 86_400_000.0 }
             .takeIf { it.isNotEmpty() }?.average()
 
-        // ── Shipment status breakdown ─────────────────────────────────────────
-        val shipmentExpected = txs.count { it.shipmentStatus == ShipmentStatus.EXPECTED && it.isActive }
-        val shipmentArrived  = txs.count { it.shipmentStatus == ShipmentStatus.ARRIVED }
-        val shipmentCleared  = txs.count { it.shipmentStatus == ShipmentStatus.CLEARED }
+        // ── Upcoming arrivals (still before airport arrival, expected soon) ────
         val upcomingArrivals = txs.count { tx ->
-            tx.shipmentStatus == ShipmentStatus.EXPECTED &&
+            tx.currentPhase.number < 2 &&
             tx.expectedArrivalDate != null &&
             tx.expectedArrivalDate in now..(now + sevenDaysMs)
         }
@@ -107,9 +99,6 @@ class DashboardViewModel @Inject constructor(
             closedThisMonth      = closedThisMonth,
             phaseDistribution    = phaseDistribution,
             avgTotalDays         = avgTotalDays,
-            shipmentExpected     = shipmentExpected,
-            shipmentArrived      = shipmentArrived,
-            shipmentCleared      = shipmentCleared,
             upcomingArrivalsCount = upcomingArrivals,
             valueByDivision      = valueByDivision,
             isLoaded             = true,

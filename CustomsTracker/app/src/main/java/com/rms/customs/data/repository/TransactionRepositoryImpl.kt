@@ -2,19 +2,22 @@ package com.rms.customs.data.repository
 
 import com.rms.customs.data.local.dao.ActivityLogDao
 import com.rms.customs.data.local.dao.TransactionDao
-import com.rms.customs.data.local.dao.UserDao
 import com.rms.customs.data.local.entity.ActivityLogEntity
 import com.rms.customs.data.local.entity.toDomain
 import com.rms.customs.data.local.entity.toEntity
 import com.rms.customs.domain.model.ActivityLog
+import com.rms.customs.domain.model.AppNotification
+import com.rms.customs.domain.model.NotificationType
 import com.rms.customs.domain.model.Transaction
 import com.rms.customs.domain.model.enums.LogAction
 import com.rms.customs.domain.model.enums.TransactionStatus
 import com.rms.customs.domain.model.enums.UserRole
 import com.rms.customs.domain.model.enums.toPhase
+import com.rms.customs.domain.repository.NotificationRepository
 import com.rms.customs.domain.repository.TransactionRepository
 import com.rms.customs.domain.statemachine.TransactionStateMachine
 import com.rms.customs.domain.statemachine.TransitionResult
+import com.rms.customs.notifications.CustomsNotificationManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.UUID
@@ -25,7 +28,8 @@ import javax.inject.Singleton
 class TransactionRepositoryImpl @Inject constructor(
     private val transactionDao: TransactionDao,
     private val activityLogDao: ActivityLogDao,
-    private val userDao: UserDao,
+    private val notificationRepository: NotificationRepository,
+    private val notificationManager: CustomsNotificationManager,
     private val stateMachine: TransactionStateMachine,
 ) : TransactionRepository {
 
@@ -69,6 +73,7 @@ class TransactionRepositoryImpl @Inject constructor(
         transactionId: UUID,
         newStatus: TransactionStatus,
         actorUserId: UUID,
+        actorRole: UserRole,
         payload: String,
     ) {
         val existing = transactionDao.getById(transactionId.toString())
@@ -76,13 +81,15 @@ class TransactionRepositoryImpl @Inject constructor(
             ?: error("Transaction $transactionId not found")
 
         // Defense in depth: the UI hides the relevant button/checkbox for unauthorized roles,
-        // but that alone is not a security boundary — enforce the same restriction here too,
-        // so no UI edge case can let an unauthorized actor perform these two exclusive actions.
-        val actorRole = userDao.getById(actorUserId.toString())?.role?.let { runCatching { UserRole.valueOf(it) }.getOrNull() }
-        if (newStatus == TransactionStatus.CLEARANCE_ISSUED && actorRole?.canMarkClearanceDone != true) {
+        // but that alone is not a security boundary — enforce the same restriction here too.
+        // actorRole is the caller's *effective* role (i.e. the simulated role during an admin's
+        // "view as" session) rather than something re-derived from actorUserId's DB record —
+        // re-deriving from the DB would always resolve to the real admin during "view as" and
+        // silently authorize actions the simulated role should be blocked from.
+        if (newStatus == TransactionStatus.CLEARANCE_ISSUED && !actorRole.canMarkClearanceDone) {
             error("لا تملك صلاحية تنفيذ التخليص / You do not have permission to mark clearance done")
         }
-        if (newStatus == TransactionStatus.TRANSFERRED_TO_WAREHOUSE && actorRole?.canMarkWarehouseTransferred != true) {
+        if (newStatus == TransactionStatus.TRANSFERRED_TO_WAREHOUSE && !actorRole.canMarkWarehouseTransferred) {
             error("لا تملك صلاحية تأكيد النقل للمستودعات / You do not have permission to confirm warehouse transfer")
         }
 
@@ -96,6 +103,7 @@ class TransactionRepositoryImpl @Inject constructor(
             currentPhase  = newPhase,
             exceptionState = if (newStatus.isException) newStatus else null,
             updatedAt = now,
+            actualArrivalDate = if (newStatus == TransactionStatus.ARRIVED_AT_AIRPORT) now else existing.actualArrivalDate,
             closedAt = if (newStatus == TransactionStatus.TRANSFERRED_TO_WAREHOUSE) now else existing.closedAt,
         )
         val log = ActivityLogEntity(
@@ -109,6 +117,23 @@ class TransactionRepositoryImpl @Inject constructor(
             occurredAt = now,
         )
         transactionDao.advanceStatus(updated.toEntity(), log)
+
+        // Notify every account on this device that the transaction is now fully closed.
+        if (newStatus == TransactionStatus.TRANSFERRED_TO_WAREHOUSE) {
+            val notification = AppNotification(
+                id            = UUID.randomUUID(),
+                transactionId = transactionId,
+                type          = NotificationType.TRANSACTION_CLOSED,
+                titleAr       = "تم إغلاق المعاملة",
+                titleEn       = "Transaction Closed",
+                messageAr     = "تم نقل شحنة المعاملة ${existing.transactionRef} إلى المستودعات وأُغلقت المعاملة",
+                messageEn     = "Transaction ${existing.transactionRef} was transferred to warehouses and closed",
+                isRead        = false,
+                createdAt     = now,
+            )
+            notificationRepository.create(notification)
+            notificationManager.postTransactionClosedNotification(notification, transactionId.hashCode())
+        }
     }
 
     override suspend fun setExceptionState(

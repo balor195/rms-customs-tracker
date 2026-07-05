@@ -3,7 +3,6 @@ package com.rms.customs.domain.model
 import com.rms.customs.domain.model.enums.Beneficiary
 import com.rms.customs.domain.model.enums.Department
 import com.rms.customs.domain.model.enums.Priority
-import com.rms.customs.domain.model.enums.ShipmentStatus
 import com.rms.customs.domain.model.enums.TransactionPhase
 import com.rms.customs.domain.model.enums.TransactionStatus
 import java.util.UUID
@@ -23,8 +22,7 @@ data class Transaction(
     val totalValue: Double? = null,
     val currency: String = "JOD",
     val expectedArrivalDate: Long? = null,          // تاريخ الوصول المتوقع
-    val actualArrivalDate: Long? = null,            // تاريخ الوصول الفعلي
-    val shipmentStatus: ShipmentStatus = ShipmentStatus.EXPECTED,  // حالة الشحنة
+    val actualArrivalDate: Long? = null,            // تاريخ الوصول الفعلي — تُسجَّل تلقائياً عند "وصلت الشحنة للمطار"
     val weightKg: Double? = null,                   // وزن الشحنة (كغم)
     val isRefrigerated: Boolean = false,            // هل الشحنة مبرّدة
     val defaultShelfLife: String? = null,           // العمر الافتراضي (شعبة المستهلكات فقط)
