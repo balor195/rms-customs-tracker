@@ -26,8 +26,9 @@ kotlin {
         }
     }
 
+    // iosX64 (Intel simulator) deliberately omitted — androidx.sqlite:sqlite-bundled no longer
+    // publishes for it, and every dev/CI machine here is Apple Silicon (iosSimulatorArm64) anyway.
     listOf(
-        iosX64(),
         iosArm64(),
         iosSimulatorArm64()
     ).forEach { iosTarget ->
@@ -175,9 +176,8 @@ dependencies {
     add("debugImplementation", libs.compose.ui.tooling)
 
     // KSP — Room's @Database/@Dao/@Entity processing runs per-target since Kotlin/Native
-    // doesn't share one compiled artifact across iosX64/iosArm64/iosSimulatorArm64 like JVM does.
+    // doesn't share one compiled artifact across iosArm64/iosSimulatorArm64 like JVM does.
     add("kspAndroid", libs.room.compiler)
-    add("kspIosX64", libs.room.compiler)
     add("kspIosArm64", libs.room.compiler)
     add("kspIosSimulatorArm64", libs.room.compiler)
 }
