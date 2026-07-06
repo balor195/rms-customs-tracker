@@ -22,7 +22,7 @@ This is a large migration overall (Hilt→Koin, Retrofit→Ktor, Room→Room-KMP
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Skeleton, CI, domain migration | ✅ Done — 2026-07-06 |
-| 2 | DI & networking (Hilt→Koin, Retrofit→Ktor) | 🔶 In progress — 2a done, 2026-07-06 |
+| 2 | DI & networking (Hilt→Koin, Retrofit→Ktor) | 🔶 In progress — 2a, 2b done, 2026-07-06 |
 | 3 | Persistence (Room→Room-KMP, DataStore) | ⬜ Not started |
 | 4 | Platform abstractions (expect/actual) | ⬜ Not started |
 | 5 | UI migration to commonMain | ⬜ Not started |
@@ -86,10 +86,14 @@ Split into four sequenced sub-steps (2a–2d) — see the approved plan at the t
 
 **Verified:** `.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest` green on Windows. No emulator/device was available in this session to manually click through login/dashboard/sync, so that manual pass is still outstanding — do it before starting 2b if possible.
 
-### Phase 2b — Ktor migration (not started)
+### Phase 2b — Ktor migration ✅ Done — 2026-07-06
 
-- Replace **Retrofit + OkHttp** with **Ktor client** (OkHttp engine on Android, Darwin engine on iOS) against the existing FastAPI REST contract in `backend/` (plain JSON/REST, no Android-specific transport assumptions — confirmed in Phase 1 research).
-- Reimplement `ServerUrlInterceptor`'s runtime-editable-URL behavior as a Ktor plugin.
+- Replaced **Retrofit + OkHttp** with **Ktor client 3.0.3** (OkHttp engine on Android, Darwin engine on iOS added in `iosMain` even though it's not wired into DI yet — that's Phase 5) against the existing FastAPI REST contract in `backend/`. `CustomsApi` is now a plain class wrapping an injected `HttpClient` with the same two suspend methods (`push`/`pull`), same endpoints, same `kotlinx.serialization` config.
+- `ServerUrlInterceptor.kt` (OkHttp `Interceptor`) replaced by `data/network/ServerUrl.kt`: a plain `ServerUrlHolder` (unchanged SharedPreferences-backed read/save) plus a Ktor `createClientPlugin("ServerUrl")` that rewrites `request.url.protocol/host/port` in `onRequest`, reading the holder fresh on every request (not baked in at client-construction time) so the Settings screen's "change server URL" still takes effect without an app restart.
+- `di/NetworkModule.kt` now builds the Ktor `HttpClient(OkHttp) { ... }` with `HttpTimeout`, `ContentNegotiation` (kotlinx.serialization json), `Logging` (BODY level), and installs `ServerUrlPlugin`.
+- `SettingsViewModel.kt` updated to depend on `ServerUrlHolder` instead of `ServerUrlInterceptor` (same `readUrl()`/`saveUrl()` method names, so it was a pure type-rename).
+
+**Verified:** `.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest` green on Windows on the first compile attempt (no new library-API surprises this time). Manual sync push/pull against the local FastAPI backend and the Settings screen's live URL-change flow were not re-tested in this session (no emulator/device attached) — worth a manual pass before 2c.
 
 ### Phase 2c — UUID→String migration (not started)
 

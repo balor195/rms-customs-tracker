@@ -45,6 +45,13 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(libs.coroutines.core)
+
+            // Network
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
+            implementation(libs.ktor.client.logging)
+            implementation(libs.kotlinx.serialization.json)
         }
 
         androidMain.dependencies {
@@ -72,12 +79,8 @@ kotlin {
             implementation(libs.koin.androidx.compose)
             implementation(libs.koin.androidx.workmanager)
 
-            // Network (ready for Phase 9)
-            implementation(libs.retrofit)
-            implementation(libs.retrofit.kotlinx.serialization)
-            implementation(libs.okhttp)
-            implementation(libs.okhttp.logging)
-            implementation(libs.kotlinx.serialization.json)
+            // Network (Ktor engine)
+            implementation(libs.ktor.client.okhttp)
 
             // Auth / Security
             implementation(libs.security.crypto)
@@ -106,6 +109,7 @@ kotlin {
         }
 
         iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
         }
     }
 }

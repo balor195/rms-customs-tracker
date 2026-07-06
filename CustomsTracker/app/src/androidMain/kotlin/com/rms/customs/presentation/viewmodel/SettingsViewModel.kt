@@ -2,7 +2,7 @@ package com.rms.customs.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.rms.customs.data.network.ServerUrlInterceptor
+import com.rms.customs.data.network.ServerUrlHolder
 import com.rms.customs.domain.repository.SyncRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,11 +13,11 @@ import java.util.Date
 import java.util.Locale
 
 class SettingsViewModel(
-    private val urlInterceptor: ServerUrlInterceptor,
+    private val urlHolder: ServerUrlHolder,
     private val syncRepository: SyncRepository,
 ) : ViewModel() {
 
-    private val _serverUrl     = MutableStateFlow(urlInterceptor.readUrl())
+    private val _serverUrl     = MutableStateFlow(urlHolder.readUrl())
     val serverUrl: StateFlow<String> = _serverUrl.asStateFlow()
 
     private val _urlSaved      = MutableStateFlow(false)
@@ -44,7 +44,7 @@ class SettingsViewModel(
     fun saveUrl() {
         val trimmed = _serverUrl.value.trim()
         if (trimmed.isNotEmpty()) {
-            urlInterceptor.saveUrl(trimmed)
+            urlHolder.saveUrl(trimmed)
             _urlSaved.value = true
         }
     }

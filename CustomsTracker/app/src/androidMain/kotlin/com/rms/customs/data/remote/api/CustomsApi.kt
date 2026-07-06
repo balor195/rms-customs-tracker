@@ -3,19 +3,26 @@ package com.rms.customs.data.remote.api
 import com.rms.customs.data.remote.dto.SyncPullResponse
 import com.rms.customs.data.remote.dto.SyncPushRequest
 import com.rms.customs.data.remote.dto.SyncPushResponse
-import retrofit2.http.Body
-import retrofit2.http.GET
-import retrofit2.http.POST
-import retrofit2.http.Query
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.get
+import io.ktor.client.request.parameter
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 
-interface CustomsApi {
+class CustomsApi(private val client: HttpClient) {
 
-    @POST("api/v1/sync/push")
-    suspend fun push(@Body request: SyncPushRequest): SyncPushResponse
+    suspend fun push(request: SyncPushRequest): SyncPushResponse =
+        client.post("api/v1/sync/push") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
 
-    @GET("api/v1/sync/pull")
-    suspend fun pull(
-        @Query("since") since: Long,
-        @Query("device_id") deviceId: String,
-    ): SyncPullResponse
+    suspend fun pull(since: Long, deviceId: String): SyncPullResponse =
+        client.get("api/v1/sync/pull") {
+            parameter("since", since)
+            parameter("device_id", deviceId)
+        }.body()
 }
