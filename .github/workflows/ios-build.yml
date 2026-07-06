@@ -65,13 +65,21 @@ jobs:
           xcrun simctl bootstatus "$DEVICE_ID" -b
           APP_PATH=$(find build/Build/Products -name "*.app" -maxdepth 2 | head -n 1)
           xcrun simctl install "$DEVICE_ID" "$APP_PATH"
-          xcrun simctl launch "$DEVICE_ID" com.rms.customs.ios
-          sleep 3
+          mkdir -p logs
+          nohup xcrun simctl launch --console-pty "$DEVICE_ID" com.rms.customs.ios > logs/launch-console.log 2>&1 &
+          sleep 8
           mkdir -p screenshots
           xcrun simctl io "$DEVICE_ID" screenshot screenshots/launch.png
+          xcrun simctl spawn "$DEVICE_ID" log show --predicate 'process == "iosApp"' --last 2m > logs/device-process.log 2>&1 || true
+          xcrun simctl listapps "$DEVICE_ID" > logs/installed-apps.log 2>&1 || true
+          ls -la ~/Library/Logs/DiagnosticReports/ > logs/crash-reports-dir.log 2>&1 || true
+          find ~/Library/Logs/DiagnosticReports -iname "*iosApp*" -newer build/Build/Products -exec cp {} logs/ \; 2>&1 || true
 
-      - name: Upload launch screenshot
+      - name: Upload launch screenshot and diagnostics
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ios-launch-screenshot
-          path: CustomsTracker/iosApp/screenshots/launch.png
+          name: ios-launch-diagnostics
+          path: |
+            CustomsTracker/iosApp/screenshots/launch.png
+            CustomsTracker/iosApp/logs/
