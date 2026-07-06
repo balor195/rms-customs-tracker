@@ -2,10 +2,12 @@ package com.rms.customs.data.local.dao
 
 import android.content.Context
 import androidx.room.Room
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rms.customs.data.local.db.CustomsDatabase
 import com.rms.customs.data.local.entity.UserEntity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -26,7 +28,9 @@ class UserDaoTest {
     @Before
     fun setup() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        db = Room.inMemoryDatabaseBuilder(context, CustomsDatabase::class.java)
+        db = Room.inMemoryDatabaseBuilder<CustomsDatabase>(context)
+            .setDriver(BundledSQLiteDriver())
+            .setQueryCoroutineContext(Dispatchers.IO)
             .allowMainThreadQueries()
             .build()
         dao = db.userDao()
@@ -78,20 +82,14 @@ class UserDaoTest {
     }
 
     @Test
-    fun verifyCredentials_succeedsWithCorrectHash() = runTest {
+    fun getByUsername_returnsStoredPasswordHash() = runTest {
         dao.insert(makeUser(username = "charlie", passwordHash = "correct_hash"))
 
-        val result = dao.verifyCredentials("charlie", "correct_hash")
+        // Hash verification itself is a UserRepositoryImpl/PasswordHasher concern, not the
+        // DAO's — this only confirms the DAO round-trips the stored hash correctly.
+        val result = dao.getByUsername("charlie")
         assertNotNull(result)
-        assertEquals("charlie", result!!.username)
-    }
-
-    @Test
-    fun verifyCredentials_failsWithWrongHash() = runTest {
-        dao.insert(makeUser(username = "dave", passwordHash = "correct_hash"))
-
-        val result = dao.verifyCredentials("dave", "wrong_hash")
-        assertNull(result)
+        assertEquals("correct_hash", result!!.passwordHash)
     }
 
     @Test

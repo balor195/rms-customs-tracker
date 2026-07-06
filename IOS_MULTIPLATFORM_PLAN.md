@@ -23,7 +23,7 @@ This is a large migration overall (Hilt→Koin, Retrofit→Ktor, Room→Room-KMP
 |-------|-------------|--------|
 | 1 | Skeleton, CI, domain migration | ✅ Done — 2026-07-06 |
 | 2 | DI & networking (Hilt→Koin, Retrofit→Ktor) | ✅ Done — 2026-07-06 |
-| 3 | Persistence (Room→Room-KMP, DataStore) | ⬜ Not started |
+| 3 | Persistence (Room→Room-KMP, DataStore) | 🔶 In progress — 3a done, 2026-07-06 |
 | 4 | Platform abstractions (expect/actual) | ⬜ Not started |
 | 5 | UI migration to commonMain | ⬜ Not started |
 | 6 | iOS polish & release | ⬜ Not started |
@@ -114,10 +114,29 @@ Split into four sequenced sub-steps (2a–2d) — see the approved plan at the t
 
 **Verified:** `.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest` green (confirms `androidMain`, which depends on `commonMain`, still compiles and runs correctly against the moved code). iOS CI push confirms the actual payoff — that `domain/` now compiles for Kotlin/Native (`iosArm64`/`iosSimulatorArm64`/`iosX64`), which can't be checked without a Mac.
 
-## Phase 3 — Persistence (not started)
+## Phase 3 — Persistence (in progress)
 
-- Migrate **Room** to Room 2.7+ KMP (bundled SQLite driver) so `data/local` (db, dao, entity) can move to `commonMain`.
-- Migrate `datastore-preferences` to its multiplatform artifact.
+Split into two sub-steps (3a, 3b), same bisectable-commit pattern as Phase 2.
+
+### Phase 3a — Room 2.6.1 → 2.8.4 KMP migration ✅ Done — 2026-07-06
+
+- **Version decision, verified against live docs, not memory:** Room shipped a new major version (Room 3.0, `androidx.room3` package, full rename) as recently as March 2026, but it's very new/still stabilizing. The official, currently-live "Set up Room Database for KMP" doc still recommends **Room 2.8.4** for multiplatform projects — targeted that instead of jumping to 3.0 or staying on the pre-KMP 2.6.1.
+- Confirmed via research before starting: all 6 entities were already String/Long/Int/Double/Boolean-only (Phase 2c's UUID removal already did this work) and all 6 DAOs were already fully KMP-safe (`Flow`/`suspend fun`, no `LiveData`/`Cursor`/`Context`) — so **DAOs and entities moved to `commonMain` via `git mv` with zero code changes.** All the real work was in `CustomsDatabase.kt` and `di/DatabaseModule.kt`.
+- `CustomsDatabase.kt`: added `@ConstructedBy(CustomsDatabaseConstructor::class)` + `expect object CustomsDatabaseConstructor : RoomDatabaseConstructor<CustomsDatabase>` (Room's KSP compiler generates the `actual` bodies per target — confirmed by checking the generated file after a local build, not assumed). Rewrote all 6 migrations: `migrate(database: SupportSQLiteDatabase)` → `migrate(connection: SQLiteConnection)`, `database.execSQL(...)` → `connection.execSQL(...)` — SQL strings themselves unchanged.
+- Dropped the `RoomDatabase.Callback`-based SLA-seeding (its new-API shape was the one piece not worth chasing down blind) in favor of a behaviorally-equivalent "seed after building the database" coroutine launch in `di/DatabaseModule.kt` — same effect, no dependency on Callback's exact new signature.
+- Added platform-specific (not expect/actual — different parameter shapes) `getDatabaseBuilder()` functions: Android's takes a `Context` and uses `context.getDatabasePath(...)` (same location Room's old constructor used, so no data loss for existing local dev databases); iOS's takes no params and resolves the path via `NSFileManager`/`NSDocumentDirectory`.
+- Gradle: bumped `room` to `2.8.4`, added `sqlite-bundled:2.7.0`, moved `room-runtime`/`room-ktx` to `commonMain`, added per-target KSP processor deps (`kspIosX64`/`kspIosArm64`/`kspIosSimulatorArm64` alongside the existing `kspAndroid`) — Kotlin/Native doesn't share one compiled artifact across those three targets like JVM does, so KSP needs to run once per target.
+- **Found and fixed while touching this area (pre-existing, unrelated to this migration):** `PhaseRecordDaoTest.kt` (`androidInstrumentedTest`) referenced a `PhaseRecordDao`/`PhaseRecordEntity` deleted back in `MIGRATION_2_3` — deleted the dead test. `TransactionDaoTest.kt`'s `makeEntity()` helper was missing 10 constructor params added by migrations 1-3 (never updated) — fixed. `UserDaoTest.kt` called a `dao.verifyCredentials(...)` method that doesn't exist on `UserDao` (that logic lives in `UserRepositoryImpl` + `PasswordHasher` since Phase 2) — rewrote the test to check what the DAO actually does (round-trip the stored hash via `getByUsername`). None of this compiled before Phase 3 touched it (`androidInstrumentedTest` was never part of any prior verification step in this project — no emulator available in this dev environment).
+
+**De-risking note that worked as intended:** the Migration-signature rewrite (the single highest-uncertainty item going in) was fully caught by a local `:app:compileDebugKotlinAndroid` — no iOS CI cycle needed to validate it. Only the per-target KSP wiring and iOS-specific builder needed the actual CI round-trip.
+
+**Verified:** `.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest` green, plus `:app:compileDebugAndroidTestKotlinAndroid` green (instrumented tests still can't run without an emulator, but now they at least compile).
+
+### Phase 3b — DataStore-multiplatform swap (not started)
+
+- Relocate `datastore-preferences` (currently declared but entirely unused) from `androidMain` to `commonMain`.
+- Swap `ServerUrlHolder` and `SyncRepositoryImpl`'s plain `SharedPreferences` usage onto it, staying in `androidMain` for now (no expect/actual yet — that's Phase 4/5 territory once wired for iOS).
+- `SessionStore.kt` stays on `EncryptedSharedPreferences` — DataStore has no encrypted-storage equivalent; it moves to Phase 4's `SecureStorage` abstraction instead.
 
 ## Phase 4 — Platform abstractions via expect/actual (not started)
 

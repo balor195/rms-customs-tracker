@@ -47,6 +47,11 @@ kotlin {
             implementation(libs.coroutines.core)
             implementation(libs.kotlinx.datetime)
 
+            // Room
+            implementation(libs.room.runtime)
+            implementation(libs.room.ktx)
+            implementation(libs.sqlite.bundled)
+
             // Network
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.content.negotiation)
@@ -69,10 +74,6 @@ kotlin {
             implementation(libs.compose.material.icons.ext)
             implementation(libs.compose.ui.text.google.fonts)
             implementation(libs.navigation.compose)
-
-            // Room
-            implementation(libs.room.runtime)
-            implementation(libs.room.ktx)
 
             // Koin (BOM applied via androidMainImplementation below)
             implementation(libs.koin.core)
@@ -170,6 +171,10 @@ dependencies {
     // Debug
     add("debugImplementation", libs.compose.ui.tooling)
 
-    // KSP (Android-only annotation processing)
+    // KSP — Room's @Database/@Dao/@Entity processing runs per-target since Kotlin/Native
+    // doesn't share one compiled artifact across iosX64/iosArm64/iosSimulatorArm64 like JVM does.
     add("kspAndroid", libs.room.compiler)
+    add("kspIosX64", libs.room.compiler)
+    add("kspIosArm64", libs.room.compiler)
+    add("kspIosSimulatorArm64", libs.room.compiler)
 }

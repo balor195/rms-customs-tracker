@@ -1,9 +1,8 @@
 package com.rms.customs.di
 
-import androidx.room.Room
-import androidx.room.RoomDatabase
-import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.rms.customs.data.local.db.CustomsDatabase
+import com.rms.customs.data.local.db.getDatabaseBuilder
 import com.rms.customs.data.local.entity.toEntity
 import com.rms.customs.domain.usecase.SlaConfigDefaults
 import kotlinx.coroutines.CoroutineScope
@@ -15,22 +14,7 @@ import org.koin.dsl.module
 val databaseModule = module {
 
     single {
-        var db: CustomsDatabase? = null
-        val callback = object : RoomDatabase.Callback() {
-            override fun onOpen(sqLiteDb: SupportSQLiteDatabase) {
-                // Seed default SLA configs whenever the table is empty (fresh install,
-                // or right after a migration that cleared stale phase-numbered rows)
-                CoroutineScope(Dispatchers.IO).launch {
-                    val dao = db?.slaConfigDao() ?: return@launch
-                    if (dao.count() == 0) {
-                        SlaConfigDefaults.all.forEach { config ->
-                            dao.upsert(config.toEntity())
-                        }
-                    }
-                }
-            }
-        }
-        Room.databaseBuilder(androidContext(), CustomsDatabase::class.java, "customs_tracker.db")
+        val db = getDatabaseBuilder(androidContext())
             .addMigrations(
                 CustomsDatabase.MIGRATION_1_2,
                 CustomsDatabase.MIGRATION_2_3,
@@ -39,9 +23,22 @@ val databaseModule = module {
                 CustomsDatabase.MIGRATION_5_6,
                 CustomsDatabase.MIGRATION_6_7,
             )
-            .addCallback(callback)
+            .setDriver(BundledSQLiteDriver())
+            .setQueryCoroutineContext(Dispatchers.IO)
             .build()
-            .also { db = it }
+
+        // Seed default SLA configs whenever the table is empty (fresh install,
+        // or right after a migration that cleared stale phase-numbered rows)
+        CoroutineScope(Dispatchers.IO).launch {
+            val dao = db.slaConfigDao()
+            if (dao.count() == 0) {
+                SlaConfigDefaults.all.forEach { config ->
+                    dao.upsert(config.toEntity())
+                }
+            }
+        }
+
+        db
     }
 
     single { get<CustomsDatabase>().transactionDao() }

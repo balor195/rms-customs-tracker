@@ -2,11 +2,13 @@ package com.rms.customs.data.local.dao
 
 import android.content.Context
 import androidx.room.Room
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rms.customs.data.local.db.CustomsDatabase
 import com.rms.customs.data.local.entity.ActivityLogEntity
 import com.rms.customs.data.local.entity.TransactionEntity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -27,7 +29,9 @@ class TransactionDaoTest {
     @Before
     fun setup() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        db = Room.inMemoryDatabaseBuilder(context, CustomsDatabase::class.java)
+        db = Room.inMemoryDatabaseBuilder<CustomsDatabase>(context)
+            .setDriver(BundledSQLiteDriver())
+            .setQueryCoroutineContext(Dispatchers.IO)
             .allowMainThreadQueries()
             .build()
         dao = db.transactionDao()
@@ -45,11 +49,21 @@ class TransactionDaoTest {
         id = id,
         transactionRef = "RMS-TEST-${id.take(4)}",
         title = "Test Transaction",
+        division = null,
+        accreditationNumber = null,
+        billOfLadingNumber = null,
+        responsibleOfficer = "Test Officer",
+        beneficiary = null,
         tenderRef = null,
         contractRef = null,
         supplierName = "Test Supplier",
         totalValue = 10000.0,
         currency = "JOD",
+        expectedArrivalDate = null,
+        actualArrivalDate = null,
+        weightKg = null,
+        isRefrigerated = false,
+        defaultShelfLife = null,
         currentPhase = "PHASE_1_TENDER",
         currentStatus = status,
         exceptionState = null,
