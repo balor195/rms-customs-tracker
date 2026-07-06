@@ -36,6 +36,15 @@ jobs:
         working-directory: CustomsTracker
         run: chmod +x gradlew
 
+      - name: Pick an available iOS simulator
+        id: sim
+        run: |
+          set -e
+          DEVICE_LINE=$(xcrun simctl list devices available | grep -E "iPhone" | head -n 1)
+          DEVICE_ID=$(echo "$DEVICE_LINE" | grep -oE "[0-9A-F-]{36}")
+          echo "Selected simulator: $DEVICE_LINE"
+          echo "id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
+
       - name: Build iOS app (triggers shared Kotlin framework build via Gradle)
         working-directory: CustomsTracker/iosApp
         run: |
@@ -43,7 +52,7 @@ jobs:
             -project iosApp.xcodeproj \
             -scheme iosApp \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            -destination "id=${{ steps.sim.outputs.id }}" \
             -derivedDataPath build \
             build
 
@@ -51,7 +60,7 @@ jobs:
         working-directory: CustomsTracker/iosApp
         run: |
           set -e
-          DEVICE_ID=$(xcrun simctl list devices available | grep "iPhone 15" | head -n 1 | grep -oE "[0-9A-F-]{36}")
+          DEVICE_ID="${{ steps.sim.outputs.id }}"
           xcrun simctl boot "$DEVICE_ID"
           xcrun simctl bootstatus "$DEVICE_ID" -b
           APP_PATH=$(find build/Build/Products -name "*.app" -maxdepth 2 | head -n 1)
