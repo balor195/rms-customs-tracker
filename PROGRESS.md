@@ -580,6 +580,7 @@ User confirmed the core workflow (#13/#14) now works correctly, but reported tha
 
 ### Verification
 - `.\gradlew assembleDebug testDebugUnitTest` — **BUILD SUCCESSFUL**, all unit tests passing.
+- **2026-07-06 — user manually tested on-device and confirmed:** "View as" impersonation now behaves identically to a real dedicated account for every simulated role, and permission enforcement (both the UI-layer gate and the repository-layer `actorRole` check) works as intended.
 
 ---
 
