@@ -7,7 +7,7 @@ import com.rms.customs.data.local.entity.toDomain
 import com.rms.customs.data.local.entity.toEntity
 import com.rms.customs.domain.model.ActivityLog
 import com.rms.customs.domain.model.AppNotification
-import com.rms.customs.domain.model.NotificationType
+import com.rms.customs.domain.model.enums.NotificationType
 import com.rms.customs.domain.model.Transaction
 import com.rms.customs.domain.model.enums.LogAction
 import com.rms.customs.domain.model.enums.TransactionStatus

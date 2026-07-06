@@ -4,7 +4,7 @@ import com.rms.customs.data.local.dao.NotificationDao
 import com.rms.customs.data.local.entity.toDomain
 import com.rms.customs.data.local.entity.toEntity
 import com.rms.customs.domain.model.AppNotification
-import com.rms.customs.domain.model.NotificationType
+import com.rms.customs.domain.model.enums.NotificationType
 import com.rms.customs.domain.repository.NotificationRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map

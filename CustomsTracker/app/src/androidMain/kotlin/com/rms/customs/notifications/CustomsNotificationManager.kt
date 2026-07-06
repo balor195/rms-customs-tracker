@@ -8,7 +8,7 @@ import android.content.Intent
 import androidx.core.app.NotificationCompat
 import com.rms.customs.MainActivity
 import com.rms.customs.domain.model.AppNotification
-import com.rms.customs.domain.model.NotificationType
+import com.rms.customs.domain.model.enums.NotificationType
 
 class CustomsNotificationManager(
     private val context: Context,

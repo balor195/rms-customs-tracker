@@ -22,7 +22,7 @@ This is a large migration overall (Hilt→Koin, Retrofit→Ktor, Room→Room-KMP
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Skeleton, CI, domain migration | ✅ Done — 2026-07-06 |
-| 2 | DI & networking (Hilt→Koin, Retrofit→Ktor) | 🔶 In progress — 2a, 2b, 2c done, 2026-07-06 |
+| 2 | DI & networking (Hilt→Koin, Retrofit→Ktor) | ✅ Done — 2026-07-06 |
 | 3 | Persistence (Room→Room-KMP, DataStore) | ⬜ Not started |
 | 4 | Platform abstractions (expect/actual) | ⬜ Not started |
 | 5 | UI migration to commonMain | ⬜ Not started |
@@ -69,7 +69,7 @@ gh run download <run-id> --repo balor195/rms-customs-tracker --name ios-launch-d
 
 ---
 
-## Phase 2 — DI & networking (in progress)
+## Phase 2 — DI & networking ✅ Done
 
 Split into four sequenced sub-steps (2a–2d) — see the approved plan at the top of this phase's work for the full rationale. Each sub-step is its own commit and independently verifiable; only 2d needs iOS CI.
 
@@ -105,9 +105,14 @@ Split into four sequenced sub-steps (2a–2d) — see the approved plan at the t
 
 **Verified:** `.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest` green.
 
-### Phase 2d — Move domain/ to commonMain (not started)
+### Phase 2d — Move domain/ to commonMain ✅ Done — 2026-07-06
 
-- Once 2b/2c are done, move the rest of `domain/` (models, repositories, usecases minus `PasswordHasher`, statemachine) to `commonMain`. This is the only sub-step needing iOS CI to verify.
+- Moved (via `git mv`, preserving history) all of `domain/model/*.kt` (6 files), `domain/repository/*.kt` (6 interfaces, including `SyncRepository`), `domain/usecase/{LoginUseCase,SetupAdminUseCase,SlaConfigDefaults,TransactionAccessScope}.kt`, and `domain/statemachine/TransactionStateMachine.kt` from `androidMain` to `commonMain`. **`PasswordHasher.kt` stays in `androidMain`** (comment added explaining why — only consumed by `UserRepositoryImpl`, which stays androidMain until Phase 3).
+- Extracted `NotificationType` out of `AppNotification.kt` into `commonMain/domain/model/enums/NotificationType.kt`, matching where the other enums already live — fixed the Phase 1 inconsistency flagged during Phase 2 planning. Updated the 7 dependent files' imports.
+- `Transaction.kt`'s `daysSinceUpdate` switched from `System.currentTimeMillis()` (JVM-only) to `kotlinx-datetime`'s `Clock.System.now().toEpochMilliseconds()`. Added `kotlinx-datetime:0.6.1` to `commonMain` deps.
+- No import changes were needed in any `androidMain` consumer of the moved classes — packages didn't change (only source-set location did), and `androidMain` already depends on `commonMain` in KMP, so this was a pure file relocation plus the two content fixes above.
+
+**Verified:** `.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest` green (confirms `androidMain`, which depends on `commonMain`, still compiles and runs correctly against the moved code). iOS CI push confirms the actual payoff — that `domain/` now compiles for Kotlin/Native (`iosArm64`/`iosSimulatorArm64`/`iosX64`), which can't be checked without a Mac.
 
 ## Phase 3 — Persistence (not started)
 

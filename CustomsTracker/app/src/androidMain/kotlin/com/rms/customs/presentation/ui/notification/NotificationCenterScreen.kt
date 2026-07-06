@@ -44,7 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rms.customs.domain.model.AppNotification
-import com.rms.customs.domain.model.NotificationType
+import com.rms.customs.domain.model.enums.NotificationType
 import com.rms.customs.presentation.viewmodel.NotifFilter
 import com.rms.customs.presentation.viewmodel.NotificationViewModel
 import org.koin.androidx.compose.koinViewModel

@@ -1,7 +1,7 @@
 package com.rms.customs.domain.repository
 
 import com.rms.customs.domain.model.AppNotification
-import com.rms.customs.domain.model.NotificationType
+import com.rms.customs.domain.model.enums.NotificationType
 import kotlinx.coroutines.flow.Flow
 
 interface NotificationRepository {

@@ -1,14 +1,6 @@
 package com.rms.customs.domain.model
 
-enum class NotificationType {
-    SLA_BREACH,
-    SLA_ESCALATED,
-    PHASE_BLOCKED,
-    DOC_MISSING,
-    PHASE_ADVANCED,
-    TRANSACTION_CLOSED,
-    MANUAL;
-}
+import com.rms.customs.domain.model.enums.NotificationType
 
 data class AppNotification(
     val id: String,

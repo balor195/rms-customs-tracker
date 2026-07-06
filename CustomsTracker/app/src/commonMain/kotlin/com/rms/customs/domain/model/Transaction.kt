@@ -5,6 +5,7 @@ import com.rms.customs.domain.model.enums.Department
 import com.rms.customs.domain.model.enums.Priority
 import com.rms.customs.domain.model.enums.TransactionPhase
 import com.rms.customs.domain.model.enums.TransactionStatus
+import kotlinx.datetime.Clock
 
 data class Transaction(
     val id: String,
@@ -38,5 +39,5 @@ data class Transaction(
     val isActive: Boolean get() = !currentStatus.isTerminal && exceptionState == null
     val isBlocked: Boolean get() = exceptionState != null
     val daysSinceUpdate: Long
-        get() = (System.currentTimeMillis() - updatedAt) / 86_400_000L
+        get() = (Clock.System.now().toEpochMilliseconds() - updatedAt) / 86_400_000L
 }
