@@ -1,14 +1,22 @@
 package com.rms.customs.data.repository
 
 import android.content.Context
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
 import com.rms.customs.data.local.dao.TransactionDao
 import com.rms.customs.data.remote.api.CustomsApi
 import com.rms.customs.data.remote.dto.SyncPushRequest
 import com.rms.customs.data.remote.dto.toEntity
 import com.rms.customs.data.remote.dto.toSyncDto
 import com.rms.customs.domain.repository.SyncRepository
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
+
+private val Context.syncDataStore by preferencesDataStore(name = "rms_sync_prefs")
 
 class SyncRepositoryImpl(
     private val context: Context,
@@ -16,26 +24,34 @@ class SyncRepositoryImpl(
     private val transactionDao: TransactionDao,
 ) : SyncRepository {
 
-    private val prefs by lazy {
-        context.getSharedPreferences("rms_sync_prefs", Context.MODE_PRIVATE)
+    private companion object {
+        val KEY_LAST_SYNC_MS = longPreferencesKey("last_sync_ms")
+        val KEY_DEVICE_ID = stringPreferencesKey("device_id")
     }
 
-    private fun getLastSyncTime(): Long = prefs.getLong("last_sync_ms", 0L)
+    // Cached in memory so getLastSyncTimeMs() can stay synchronous (SyncRepository's
+    // interface, and its two ViewModel callers, predate DataStore's Flow/suspend-only API).
+    @Volatile
+    private var cachedLastSyncMs: Long = runBlocking {
+        context.syncDataStore.data.first()[KEY_LAST_SYNC_MS] ?: 0L
+    }
 
-    private fun setLastSyncTime(t: Long) = prefs.edit().putLong("last_sync_ms", t).apply()
+    private suspend fun setLastSyncTime(t: Long) {
+        cachedLastSyncMs = t
+        context.syncDataStore.edit { it[KEY_LAST_SYNC_MS] = t }
+    }
 
     @OptIn(ExperimentalUuidApi::class)
-    private fun deviceId(): String {
-        var id = prefs.getString("device_id", null)
-        if (id == null) {
-            id = Uuid.random().toString()
-            prefs.edit().putString("device_id", id).apply()
-        }
-        return id!!
+    private suspend fun deviceId(): String {
+        val existing = context.syncDataStore.data.first()[KEY_DEVICE_ID]
+        if (existing != null) return existing
+        val id = Uuid.random().toString()
+        context.syncDataStore.edit { it[KEY_DEVICE_ID] = id }
+        return id
     }
 
     override suspend fun push(): Int {
-        val since = getLastSyncTime()
+        val since = cachedLastSyncMs
         val modified = transactionDao.getModifiedSince(since)
         if (modified.isEmpty()) return 0
 
@@ -52,7 +68,7 @@ class SyncRepositoryImpl(
     }
 
     override suspend fun pull(): Int {
-        val since = getLastSyncTime()
+        val since = cachedLastSyncMs
         val response = api.pull(since = since, deviceId = deviceId())
 
         response.transactions.forEach { dto ->
@@ -69,5 +85,5 @@ class SyncRepositoryImpl(
         Pair(pushed, pulled)
     }
 
-    override fun getLastSyncTimeMs(): Long = getLastSyncTime()
+    override fun getLastSyncTimeMs(): Long = cachedLastSyncMs
 }

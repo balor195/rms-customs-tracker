@@ -1,24 +1,42 @@
 package com.rms.customs.data.network
 
 import android.content.Context
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
 import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.http.Url
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+
+private val Context.appConfigDataStore by preferencesDataStore(name = "rms_app_config")
 
 class ServerUrlHolder(private val context: Context) {
 
     companion object {
-        const val PREFS_NAME  = "rms_app_config"
-        const val KEY_URL     = "server_url"
+        val KEY_URL = stringPreferencesKey("server_url")
         const val DEFAULT_URL = "http://10.0.2.2:8000/"
     }
 
-    fun readUrl(): String =
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getString(KEY_URL, DEFAULT_URL) ?: DEFAULT_URL
+    // Cached in memory so readUrl()/saveUrl() can stay synchronous (matching the old
+    // SharedPreferences-backed API) even though DataStore itself is Flow/suspend-based.
+    @Volatile
+    private var cachedUrl: String = runBlocking {
+        context.appConfigDataStore.data.first()[KEY_URL] ?: DEFAULT_URL
+    }
 
-    fun saveUrl(url: String) =
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit().putString(KEY_URL, url.trimEnd('/') + "/").apply()
+    fun readUrl(): String = cachedUrl
+
+    fun saveUrl(url: String) {
+        val normalized = url.trimEnd('/') + "/"
+        cachedUrl = normalized
+        CoroutineScope(Dispatchers.IO).launch {
+            context.appConfigDataStore.edit { prefs -> prefs[KEY_URL] = normalized }
+        }
+    }
 }
 
 class ServerUrlPluginConfig {

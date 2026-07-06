@@ -52,6 +52,9 @@ kotlin {
             implementation(libs.room.ktx)
             implementation(libs.sqlite.bundled)
 
+            // Persistence
+            implementation(libs.datastore)
+
             // Network
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.content.negotiation)
@@ -67,7 +70,6 @@ kotlin {
             implementation(libs.lifecycle.viewmodel.compose)
             implementation(libs.activity.compose)
             implementation(libs.coroutines.android)
-            implementation(libs.datastore)
 
             // Compose UI (Android-specific interop/tooling)
             implementation(libs.compose.ui.tooling.preview)

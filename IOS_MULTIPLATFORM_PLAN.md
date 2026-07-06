@@ -23,7 +23,7 @@ This is a large migration overall (Hilt→Koin, Retrofit→Ktor, Room→Room-KMP
 |-------|-------------|--------|
 | 1 | Skeleton, CI, domain migration | ✅ Done — 2026-07-06 |
 | 2 | DI & networking (Hilt→Koin, Retrofit→Ktor) | ✅ Done — 2026-07-06 |
-| 3 | Persistence (Room→Room-KMP, DataStore) | 🔶 In progress — 3a done, 2026-07-06 |
+| 3 | Persistence (Room→Room-KMP, DataStore) | 🔶 In progress — 3a, 3b done pending iOS CI, 2026-07-06 |
 | 4 | Platform abstractions (expect/actual) | ⬜ Not started |
 | 5 | UI migration to commonMain | ⬜ Not started |
 | 6 | iOS polish & release | ⬜ Not started |
@@ -132,11 +132,14 @@ Split into two sub-steps (3a, 3b), same bisectable-commit pattern as Phase 2.
 
 **Verified:** `.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest` green, plus `:app:compileDebugAndroidTestKotlinAndroid` green (instrumented tests still can't run without an emulator, but now they at least compile).
 
-### Phase 3b — DataStore-multiplatform swap (not started)
+### Phase 3b — DataStore-multiplatform swap ✅ Done — 2026-07-06
 
-- Relocate `datastore-preferences` (currently declared but entirely unused) from `androidMain` to `commonMain`.
-- Swap `ServerUrlHolder` and `SyncRepositoryImpl`'s plain `SharedPreferences` usage onto it, staying in `androidMain` for now (no expect/actual yet — that's Phase 4/5 territory once wired for iOS).
-- `SessionStore.kt` stays on `EncryptedSharedPreferences` — DataStore has no encrypted-storage equivalent; it moves to Phase 4's `SecureStorage` abstraction instead.
+- Relocated `datastore-preferences` (was declared but entirely unused) from `androidMain` to `commonMain`.
+- Swapped `ServerUrlHolder` and `SyncRepositoryImpl`'s plain `SharedPreferences` usage onto it — both stay in `androidMain` for now (no expect/actual yet, that's Phase 4/5 territory once wired for iOS).
+- **Design note:** DataStore's API is Flow/suspend-only, but `ServerUrlHolder.readUrl()`/`SyncRepositoryImpl.getLastSyncTimeMs()` are called synchronously today (ViewModel field initializers, a computed property getter) — rather than changing `SyncRepository`'s interface or two ViewModels' shape just for a storage-technology swap, both classes now keep an in-memory `@Volatile` cache (seeded once via `runBlocking` at construction, kept in sync on every write) so the public API stays byte-for-byte the same. Writes stay fire-and-forget (`CoroutineScope(Dispatchers.IO).launch { ... }`) rather than blocking, matching the old `SharedPreferences.edit().apply()`'s non-blocking semantics.
+- `SessionStore.kt` stays on `EncryptedSharedPreferences` as planned — DataStore has no encrypted-storage equivalent; it moves to Phase 4's `SecureStorage` abstraction instead.
+
+**Verified:** `.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :app:compileDebugAndroidTestKotlinAndroid` all green.
 
 ## Phase 4 — Platform abstractions via expect/actual (not started)
 
