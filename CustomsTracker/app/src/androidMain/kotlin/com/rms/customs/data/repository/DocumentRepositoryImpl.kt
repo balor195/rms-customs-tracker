@@ -11,31 +11,33 @@ import com.rms.customs.domain.model.enums.LogAction
 import com.rms.customs.domain.repository.DocumentRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.util.UUID
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 class DocumentRepositoryImpl(
     private val documentDao: DocumentDao,
     private val activityLogDao: ActivityLogDao,
 ) : DocumentRepository {
 
-    override fun observeForTransaction(transactionId: UUID): Flow<List<TransactionDocument>> =
-        documentDao.observeForTransaction(transactionId.toString())
+    override fun observeForTransaction(transactionId: String): Flow<List<TransactionDocument>> =
+        documentDao.observeForTransaction(transactionId)
             .map { it.map { e -> e.toDomain() } }
 
-    override fun observeForPhase(transactionId: UUID, phaseRef: String): Flow<List<TransactionDocument>> =
-        documentDao.observeForPhase(transactionId.toString(), phaseRef)
+    override fun observeForPhase(transactionId: String, phaseRef: String): Flow<List<TransactionDocument>> =
+        documentDao.observeForPhase(transactionId, phaseRef)
             .map { it.map { e -> e.toDomain() } }
 
-    override suspend fun getById(id: UUID): TransactionDocument? =
-        documentDao.getById(id.toString())?.toDomain()
+    override suspend fun getById(id: String): TransactionDocument? =
+        documentDao.getById(id)?.toDomain()
 
+    @OptIn(ExperimentalUuidApi::class)
     override suspend fun save(document: TransactionDocument) {
         documentDao.insert(document.toEntity())
         activityLogDao.insert(
             ActivityLogEntity(
-                id = UUID.randomUUID().toString(),
-                transactionId = document.transactionId.toString(),
-                userId = document.uploadedByUserId.toString(),
+                id = Uuid.random().toString(),
+                transactionId = document.transactionId,
+                userId = document.uploadedByUserId,
                 action = LogAction.DOC_UPLOADED.name,
                 fromStatus = null,
                 toStatus = null,
@@ -45,25 +47,25 @@ class DocumentRepositoryImpl(
         )
     }
 
-    override suspend fun markVerified(id: UUID, verifiedByUserId: UUID) {
-        documentDao.markVerified(id.toString())
+    override suspend fun markVerified(id: String, verifiedByUserId: String) {
+        documentDao.markVerified(id)
     }
 
-    override suspend fun delete(id: UUID) {
-        documentDao.delete(id.toString())
+    override suspend fun delete(id: String) {
+        documentDao.delete(id)
     }
 
-    override suspend fun updateRemoteUrl(id: UUID, remoteUrl: String) {
-        documentDao.updateRemoteUrl(id.toString(), remoteUrl)
+    override suspend fun updateRemoteUrl(id: String, remoteUrl: String) {
+        documentDao.updateRemoteUrl(id, remoteUrl)
     }
 
     override suspend fun hasMissingRequiredDocs(
-        transactionId: UUID,
+        transactionId: String,
         phaseRef: String,
         types: List<DocumentType>,
     ): Boolean {
         val count = documentDao.countExistingDocs(
-            transactionId = transactionId.toString(),
+            transactionId = transactionId,
             phaseRef = phaseRef,
             types = types.map { it.name },
         )

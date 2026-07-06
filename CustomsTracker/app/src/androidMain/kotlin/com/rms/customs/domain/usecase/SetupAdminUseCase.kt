@@ -3,7 +3,8 @@ package com.rms.customs.domain.usecase
 import com.rms.customs.domain.model.User
 import com.rms.customs.domain.model.enums.UserRole
 import com.rms.customs.domain.repository.UserRepository
-import java.util.UUID
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 sealed class SetupResult {
     data class Success(val user: User) : SetupResult()
@@ -13,6 +14,7 @@ sealed class SetupResult {
 class SetupAdminUseCase(
     private val userRepository: UserRepository,
 ) {
+    @OptIn(ExperimentalUuidApi::class)
     suspend operator fun invoke(
         displayNameAr: String,
         displayNameEn: String,
@@ -33,7 +35,7 @@ class SetupAdminUseCase(
             return SetupResult.Error("اسم المستخدم مستخدم بالفعل / Username already taken")
         }
         val admin = User(
-            id = UUID.randomUUID(),
+            id = Uuid.random().toString(),
             username = username.trim().lowercase(),
             displayName = displayNameEn.ifBlank { displayNameAr },
             displayNameAr = displayNameAr,

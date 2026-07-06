@@ -4,7 +4,6 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.rms.customs.domain.model.SlaConfig
-import java.util.UUID
 
 @Entity(
     tableName = "sla_configs",
@@ -20,7 +19,7 @@ data class SlaConfigEntity(
 )
 
 fun SlaConfigEntity.toDomain() = SlaConfig(
-    id = UUID.fromString(id),
+    id = id,
     phaseNumber = phaseNumber,
     subPhase = subPhase,
     targetDays = targetDays,
@@ -29,7 +28,7 @@ fun SlaConfigEntity.toDomain() = SlaConfig(
 )
 
 fun SlaConfig.toEntity() = SlaConfigEntity(
-    id = id.toString(),
+    id = id,
     phaseNumber = phaseNumber,
     subPhase = subPhase,
     targetDays = targetDays,

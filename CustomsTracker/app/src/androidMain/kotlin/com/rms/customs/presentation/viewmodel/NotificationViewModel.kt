@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 enum class NotifFilter { ALL, UNREAD, SLA }
 
@@ -43,7 +42,7 @@ class NotificationViewModel(
 
     fun setFilter(f: NotifFilter) { _filter.value = f }
 
-    fun markRead(id: UUID) = viewModelScope.launch { notificationRepository.markRead(id) }
+    fun markRead(id: String) = viewModelScope.launch { notificationRepository.markRead(id) }
 
     fun markAllRead() = viewModelScope.launch { notificationRepository.markAllRead() }
 }

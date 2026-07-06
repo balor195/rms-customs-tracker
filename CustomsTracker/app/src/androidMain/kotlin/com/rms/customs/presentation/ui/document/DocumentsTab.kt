@@ -46,8 +46,10 @@ import com.rms.customs.presentation.viewmodel.DocumentViewModel
 import com.rms.customs.presentation.viewmodel.UploadState
 import org.koin.androidx.compose.koinViewModel
 import java.io.File
-import java.util.UUID
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
+@OptIn(ExperimentalUuidApi::class)
 @Composable
 fun DocumentsTab(
     currentPhaseNumber: Int,
@@ -200,7 +202,7 @@ fun DocumentsTab(
             onCamera = {
                 val photoFile = File(
                     context.cacheDir,
-                    "customs_documents/${UUID.randomUUID()}.jpg",
+                    "customs_documents/${Uuid.random()}.jpg",
                 ).also { it.parentFile?.mkdirs() }
                 pendingCameraFile = photoFile
                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)

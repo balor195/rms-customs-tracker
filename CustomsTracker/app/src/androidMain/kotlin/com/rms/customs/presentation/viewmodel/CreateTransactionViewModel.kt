@@ -14,7 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.UUID
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 data class CreateTransactionUiState(
     val generatedRef: String = "",
@@ -37,6 +38,7 @@ class CreateTransactionViewModel(
         }
     }
 
+    @OptIn(ExperimentalUuidApi::class)
     fun create(
         title: String,
         accreditationNumber: String,
@@ -53,7 +55,7 @@ class CreateTransactionViewModel(
         weightKg: String,
         isRefrigerated: Boolean,
         defaultShelfLife: String,
-        createdByUserId: UUID,
+        createdByUserId: String,
     ) {
         if (accreditationNumber.isBlank()) {
             _uiState.update { it.copy(error = "الرجاء إدخال رقم الاعتماد") }
@@ -81,7 +83,7 @@ class CreateTransactionViewModel(
                 val now = System.currentTimeMillis()
                 transactionRepository.create(
                     Transaction(
-                        id                  = UUID.randomUUID(),
+                        id                  = Uuid.random().toString(),
                         transactionRef      = _uiState.value.generatedRef,
                         title               = title.trim(),
                         division            = division,

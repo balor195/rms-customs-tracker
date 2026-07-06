@@ -5,31 +5,30 @@ import com.rms.customs.domain.model.Transaction
 import com.rms.customs.domain.model.enums.TransactionStatus
 import com.rms.customs.domain.model.enums.UserRole
 import kotlinx.coroutines.flow.Flow
-import java.util.UUID
 
 interface TransactionRepository {
     fun observeAll(): Flow<List<Transaction>>
     fun observeActive(): Flow<List<Transaction>>
     fun observeByStatus(vararg statuses: TransactionStatus): Flow<List<Transaction>>
-    fun observeById(id: UUID): Flow<Transaction?>
-    suspend fun getById(id: UUID): Transaction?
+    fun observeById(id: String): Flow<Transaction?>
+    suspend fun getById(id: String): Transaction?
     suspend fun create(transaction: Transaction)
     suspend fun update(transaction: Transaction)
     suspend fun advanceStatus(
-        transactionId: UUID,
+        transactionId: String,
         newStatus: TransactionStatus,
-        actorUserId: UUID,
+        actorUserId: String,
         actorRole: UserRole,
         payload: String = "{}",
     )
     suspend fun setExceptionState(
-        transactionId: UUID,
+        transactionId: String,
         exceptionStatus: TransactionStatus,
         reason: String,
-        actorUserId: UUID,
+        actorUserId: String,
     )
-    suspend fun clearExceptionState(transactionId: UUID, actorUserId: UUID)
-    fun observeActivityLog(transactionId: UUID): Flow<List<ActivityLog>>
+    suspend fun clearExceptionState(transactionId: String, actorUserId: String)
+    fun observeActivityLog(transactionId: String): Flow<List<ActivityLog>>
     suspend fun countByStatus(status: TransactionStatus): Int
     suspend fun generateRef(): String
 }

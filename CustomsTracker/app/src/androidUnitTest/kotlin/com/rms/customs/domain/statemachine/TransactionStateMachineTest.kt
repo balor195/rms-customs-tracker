@@ -8,8 +8,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.util.UUID
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
+@OptIn(ExperimentalUuidApi::class)
 class TransactionStateMachineTest {
 
     private lateinit var machine: TransactionStateMachine
@@ -22,7 +24,7 @@ class TransactionStateMachineTest {
     // ── Helpers ────────────────────────────────────────────────────────────
 
     private fun tx(status: TransactionStatus, exception: TransactionStatus? = null) = Transaction(
-        id = UUID.randomUUID(),
+        id = Uuid.random().toString(),
         transactionRef = "RMS-TEST-0001",
         title = "Test",
         supplierName = "Test Supplier",
@@ -30,7 +32,7 @@ class TransactionStateMachineTest {
         currentStatus = status,
         exceptionState = exception,
         createdAt = 0L,
-        createdByUserId = UUID.randomUUID(),
+        createdByUserId = Uuid.random().toString(),
         updatedAt = 0L,
     )
 

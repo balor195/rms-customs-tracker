@@ -8,7 +8,6 @@ import com.rms.customs.domain.model.NotificationType
 import com.rms.customs.domain.repository.NotificationRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.util.UUID
 
 class NotificationRepositoryImpl(
     private val notificationDao: NotificationDao,
@@ -24,8 +23,8 @@ class NotificationRepositoryImpl(
         notificationDao.insert(notification.toEntity())
     }
 
-    override suspend fun markRead(id: UUID) {
-        notificationDao.markRead(id.toString())
+    override suspend fun markRead(id: String) {
+        notificationDao.markRead(id)
     }
 
     override suspend fun markAllRead() {
@@ -38,6 +37,6 @@ class NotificationRepositoryImpl(
     override suspend fun countUnread(): Int =
         notificationDao.countUnread()
 
-    override suspend fun countRecentForTx(transactionId: UUID, type: NotificationType, since: Long): Int =
-        notificationDao.countRecentForTx(transactionId.toString(), type.name, since)
+    override suspend fun countRecentForTx(transactionId: String, type: NotificationType, since: Long): Int =
+        notificationDao.countRecentForTx(transactionId, type.name, since)
 }

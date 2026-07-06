@@ -6,7 +6,6 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.rms.customs.domain.model.ActivityLog
 import com.rms.customs.domain.model.enums.LogAction
-import java.util.UUID
 
 @Entity(
     tableName = "activity_logs",
@@ -32,9 +31,9 @@ data class ActivityLogEntity(
 )
 
 fun ActivityLogEntity.toDomain() = ActivityLog(
-    id = UUID.fromString(id),
-    transactionId = UUID.fromString(transactionId),
-    userId = UUID.fromString(userId),
+    id = id,
+    transactionId = transactionId,
+    userId = userId,
     action = LogAction.valueOf(action),
     fromStatus = fromStatus,
     toStatus = toStatus,
@@ -43,9 +42,9 @@ fun ActivityLogEntity.toDomain() = ActivityLog(
 )
 
 fun ActivityLog.toEntity() = ActivityLogEntity(
-    id = id.toString(),
-    transactionId = transactionId.toString(),
-    userId = userId.toString(),
+    id = id,
+    transactionId = transactionId,
+    userId = userId,
     action = action.name,
     fromStatus = fromStatus,
     toStatus = toStatus,

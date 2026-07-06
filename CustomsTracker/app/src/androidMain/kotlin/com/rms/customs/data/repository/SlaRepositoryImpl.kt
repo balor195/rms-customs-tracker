@@ -7,7 +7,6 @@ import com.rms.customs.domain.model.SlaConfig
 import com.rms.customs.domain.repository.SlaRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.util.UUID
 
 class SlaRepositoryImpl(
     private val slaConfigDao: SlaConfigDao,
@@ -26,7 +25,7 @@ class SlaRepositoryImpl(
         slaConfigDao.upsert(config.toEntity())
     }
 
-    override suspend fun setActive(id: UUID, isActive: Boolean) {
-        slaConfigDao.setActive(id.toString(), isActive)
+    override suspend fun setActive(id: String, isActive: Boolean) {
+        slaConfigDao.setActive(id, isActive)
     }
 }

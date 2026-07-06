@@ -6,7 +6,6 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.rms.customs.domain.model.AppNotification
 import com.rms.customs.domain.model.NotificationType
-import java.util.UUID
 
 @Entity(
     tableName = "notifications",
@@ -33,8 +32,8 @@ data class NotificationEntity(
 )
 
 fun NotificationEntity.toDomain() = AppNotification(
-    id = UUID.fromString(id),
-    transactionId = UUID.fromString(transactionId),
+    id = id,
+    transactionId = transactionId,
     type = NotificationType.valueOf(type),
     titleAr = titleAr,
     titleEn = titleEn,
@@ -45,8 +44,8 @@ fun NotificationEntity.toDomain() = AppNotification(
 )
 
 fun AppNotification.toEntity() = NotificationEntity(
-    id = id.toString(),
-    transactionId = transactionId.toString(),
+    id = id,
+    transactionId = transactionId,
     type = type.name,
     titleAr = titleAr,
     titleEn = titleEn,

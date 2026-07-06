@@ -22,7 +22,7 @@ This is a large migration overall (Hilt→Koin, Retrofit→Ktor, Room→Room-KMP
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Skeleton, CI, domain migration | ✅ Done — 2026-07-06 |
-| 2 | DI & networking (Hilt→Koin, Retrofit→Ktor) | 🔶 In progress — 2a, 2b done, 2026-07-06 |
+| 2 | DI & networking (Hilt→Koin, Retrofit→Ktor) | 🔶 In progress — 2a, 2b, 2c done, 2026-07-06 |
 | 3 | Persistence (Room→Room-KMP, DataStore) | ⬜ Not started |
 | 4 | Platform abstractions (expect/actual) | ⬜ Not started |
 | 5 | UI migration to commonMain | ⬜ Not started |
@@ -95,9 +95,15 @@ Split into four sequenced sub-steps (2a–2d) — see the approved plan at the t
 
 **Verified:** `.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest` green on Windows on the first compile attempt (no new library-API surprises this time). Manual sync push/pull against the local FastAPI backend and the Settings screen's live URL-change flow were not re-tested in this session (no emulator/device attached) — worth a manual pass before 2c.
 
-### Phase 2c — UUID→String migration (not started)
+### Phase 2c — UUID→String migration ✅ Done — 2026-07-06
 
-- Do the UUID→String migration across `domain/model/*.kt`, `domain/repository/*.kt`, and the ~34 dependent files (Room entities/converters, DTOs, ViewModels, UI).
+- All 6 domain models, 5 domain repository interfaces, 6 data repository impls, 6 Room entity mapper files, `SessionStore.kt`, 6 ViewModels, and 2 Composables (`DocumentsTab.kt`, `NotificationCenterScreen.kt`) switched from `java.util.UUID` to `String`. New IDs now generated via Kotlin 2.0's multiplatform stdlib `kotlin.uuid.Uuid.random().toString()` (`@OptIn(ExperimentalUuidApi::class)`) instead of `java.util.UUID.randomUUID()`.
+- Room entity mapper `toDomain()`/`toEntity()` functions across all 6 entities lost their `UUID.fromString(...)`/`.toString()` conversions entirely — both sides were already `String` under the hood (Room columns are `TEXT`), so this was a straight pass-through simplification, not a schema change.
+- `TransactionStateMachineTest.kt` (androidUnitTest) updated to build its test `Transaction` fixtures with `Uuid.random().toString()`.
+- **Left untouched, deliberately:** the 3 `androidInstrumentedTest` DAO tests (`PhaseRecordDaoTest`, `UserDaoTest`, `TransactionDaoTest`) already operated purely on `Entity` types (`String` ids) and only used `java.util.UUID.randomUUID()` as a convenient random-string generator for test fixtures — not a reference to the domain `UUID` type being removed. No changes needed; still valid Android-only JVM test code.
+- `PasswordHasher.kt` is unaffected (never used `UUID`, stays androidMain per the Phase 2 plan).
+
+**Verified:** `.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest` green.
 
 ### Phase 2d — Move domain/ to commonMain (not started)
 

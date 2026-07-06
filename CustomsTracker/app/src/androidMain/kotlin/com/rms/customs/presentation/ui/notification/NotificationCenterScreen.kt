@@ -51,7 +51,6 @@ import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -144,12 +143,12 @@ fun NotificationCenterScreen(
                 }
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(notifications, key = { it.id.toString() }) { notif ->
+                    items(notifications, key = { it.id }) { notif ->
                         NotificationItem(
                             notification     = notif,
                             onClick          = {
                                 viewModel.markRead(notif.id)
-                                onTransactionClick(notif.transactionId.toString())
+                                onTransactionClick(notif.transactionId)
                             },
                             onMarkRead       = { viewModel.markRead(notif.id) },
                         )

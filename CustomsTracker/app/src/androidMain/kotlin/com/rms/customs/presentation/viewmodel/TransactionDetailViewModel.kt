@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 sealed class TransitionUiState {
     object Idle    : TransitionUiState()
@@ -29,7 +28,7 @@ class TransactionDetailViewModel(
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
-    private val txId: UUID = UUID.fromString(requireNotNull(savedStateHandle["id"]))
+    private val txId: String = requireNotNull(savedStateHandle["id"])
 
     val transaction: StateFlow<Transaction?> = transactionRepository.observeById(txId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -46,7 +45,7 @@ class TransactionDetailViewModel(
         return stateMachine.nextForwardStatus(from)
     }
 
-    fun advanceStatus(newStatus: TransactionStatus, actorUserId: UUID, actorRole: UserRole) {
+    fun advanceStatus(newStatus: TransactionStatus, actorUserId: String, actorRole: UserRole) {
         viewModelScope.launch {
             _transitionState.value = TransitionUiState.Loading
             runCatching { transactionRepository.advanceStatus(txId, newStatus, actorUserId, actorRole) }
@@ -55,7 +54,7 @@ class TransactionDetailViewModel(
         }
     }
 
-    fun setBlocker(reason: String, actorUserId: UUID) {
+    fun setBlocker(reason: String, actorUserId: String) {
         viewModelScope.launch {
             _transitionState.value = TransitionUiState.Loading
             runCatching {
@@ -66,7 +65,7 @@ class TransactionDetailViewModel(
         }
     }
 
-    fun clearBlocker(actorUserId: UUID) {
+    fun clearBlocker(actorUserId: String) {
         viewModelScope.launch {
             _transitionState.value = TransitionUiState.Loading
             runCatching { transactionRepository.clearExceptionState(txId, actorUserId) }

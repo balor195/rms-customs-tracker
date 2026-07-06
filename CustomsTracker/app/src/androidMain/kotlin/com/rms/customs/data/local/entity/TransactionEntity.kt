@@ -9,7 +9,6 @@ import com.rms.customs.domain.model.enums.Department
 import com.rms.customs.domain.model.enums.Priority
 import com.rms.customs.domain.model.enums.TransactionPhase
 import com.rms.customs.domain.model.enums.TransactionStatus
-import java.util.UUID
 
 @Entity(
     tableName = "transactions",
@@ -51,7 +50,7 @@ data class TransactionEntity(
 )
 
 fun TransactionEntity.toDomain() = Transaction(
-    id = UUID.fromString(id),
+    id = id,
     transactionRef = transactionRef,
     title = title,
     division = division?.let { Department.valueOf(it) },
@@ -74,14 +73,14 @@ fun TransactionEntity.toDomain() = Transaction(
     exceptionState = exceptionState?.let { TransactionStatus.valueOf(it) },
     priority = Priority.valueOf(priority),
     createdAt = createdAt,
-    createdByUserId = UUID.fromString(createdByUserId),
+    createdByUserId = createdByUserId,
     updatedAt = updatedAt,
     closedAt = closedAt,
     notes = notes,
 )
 
 fun Transaction.toEntity() = TransactionEntity(
-    id = id.toString(),
+    id = id,
     transactionRef = transactionRef,
     title = title,
     division = division?.name,
@@ -104,7 +103,7 @@ fun Transaction.toEntity() = TransactionEntity(
     exceptionState = exceptionState?.name,
     priority = priority.name,
     createdAt = createdAt,
-    createdByUserId = createdByUserId.toString(),
+    createdByUserId = createdByUserId,
     updatedAt = updatedAt,
     closedAt = closedAt,
     notes = notes,

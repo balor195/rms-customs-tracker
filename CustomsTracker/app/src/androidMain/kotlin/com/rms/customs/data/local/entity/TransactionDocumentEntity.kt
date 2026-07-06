@@ -6,7 +6,6 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.rms.customs.domain.model.TransactionDocument
 import com.rms.customs.domain.model.enums.DocumentType
-import java.util.UUID
 
 @Entity(
     tableName = "transaction_documents",
@@ -35,29 +34,29 @@ data class TransactionDocumentEntity(
 )
 
 fun TransactionDocumentEntity.toDomain() = TransactionDocument(
-    id = UUID.fromString(id),
-    transactionId = UUID.fromString(transactionId),
+    id = id,
+    transactionId = transactionId,
     phaseRef = phaseRef,
     documentType = DocumentType.valueOf(documentType),
     filename = filename,
     filePath = filePath,
     remoteUrl = remoteUrl,
     uploadedAt = uploadedAt,
-    uploadedByUserId = UUID.fromString(uploadedByUserId),
+    uploadedByUserId = uploadedByUserId,
     isVerified = isVerified,
     notes = notes,
 )
 
 fun TransactionDocument.toEntity() = TransactionDocumentEntity(
-    id = id.toString(),
-    transactionId = transactionId.toString(),
+    id = id,
+    transactionId = transactionId,
     phaseRef = phaseRef,
     documentType = documentType.name,
     filename = filename,
     filePath = filePath,
     remoteUrl = remoteUrl,
     uploadedAt = uploadedAt,
-    uploadedByUserId = uploadedByUserId.toString(),
+    uploadedByUserId = uploadedByUserId,
     isVerified = isVerified,
     notes = notes,
 )

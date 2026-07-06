@@ -20,7 +20,8 @@ import com.rms.customs.domain.statemachine.TransitionResult
 import com.rms.customs.notifications.CustomsNotificationManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.util.UUID
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 class TransactionRepositoryImpl(
     private val transactionDao: TransactionDao,
@@ -40,19 +41,20 @@ class TransactionRepositoryImpl(
         transactionDao.observeByStatus(statuses.map { it.name })
             .map { it.map { e -> e.toDomain() } }
 
-    override fun observeById(id: UUID): Flow<Transaction?> =
-        transactionDao.observeById(id.toString()).map { it?.toDomain() }
+    override fun observeById(id: String): Flow<Transaction?> =
+        transactionDao.observeById(id).map { it?.toDomain() }
 
-    override suspend fun getById(id: UUID): Transaction? =
-        transactionDao.getById(id.toString())?.toDomain()
+    override suspend fun getById(id: String): Transaction? =
+        transactionDao.getById(id)?.toDomain()
 
+    @OptIn(ExperimentalUuidApi::class)
     override suspend fun create(transaction: Transaction) {
         transactionDao.insert(transaction.toEntity())
         activityLogDao.insert(
             ActivityLogEntity(
-                id = UUID.randomUUID().toString(),
-                transactionId = transaction.id.toString(),
-                userId = transaction.createdByUserId.toString(),
+                id = Uuid.random().toString(),
+                transactionId = transaction.id,
+                userId = transaction.createdByUserId,
                 action = LogAction.CREATED.name,
                 fromStatus = null,
                 toStatus = transaction.currentStatus.name,
@@ -66,14 +68,15 @@ class TransactionRepositoryImpl(
         transactionDao.update(transaction.toEntity())
     }
 
+    @OptIn(ExperimentalUuidApi::class)
     override suspend fun advanceStatus(
-        transactionId: UUID,
+        transactionId: String,
         newStatus: TransactionStatus,
-        actorUserId: UUID,
+        actorUserId: String,
         actorRole: UserRole,
         payload: String,
     ) {
-        val existing = transactionDao.getById(transactionId.toString())
+        val existing = transactionDao.getById(transactionId)
             ?.toDomain()
             ?: error("Transaction $transactionId not found")
 
@@ -104,9 +107,9 @@ class TransactionRepositoryImpl(
             closedAt = if (newStatus == TransactionStatus.TRANSFERRED_TO_WAREHOUSE) now else existing.closedAt,
         )
         val log = ActivityLogEntity(
-            id = UUID.randomUUID().toString(),
-            transactionId = transactionId.toString(),
-            userId = actorUserId.toString(),
+            id = Uuid.random().toString(),
+            transactionId = transactionId,
+            userId = actorUserId,
             action = LogAction.STATUS_CHANGED.name,
             fromStatus = existing.currentStatus.name,
             toStatus = newStatus.name,
@@ -118,7 +121,7 @@ class TransactionRepositoryImpl(
         // Notify every account on this device that the transaction is now fully closed.
         if (newStatus == TransactionStatus.TRANSFERRED_TO_WAREHOUSE) {
             val notification = AppNotification(
-                id            = UUID.randomUUID(),
+                id            = Uuid.random().toString(),
                 transactionId = transactionId,
                 type          = NotificationType.TRANSACTION_CLOSED,
                 titleAr       = "تم إغلاق المعاملة",
@@ -133,21 +136,22 @@ class TransactionRepositoryImpl(
         }
     }
 
+    @OptIn(ExperimentalUuidApi::class)
     override suspend fun setExceptionState(
-        transactionId: UUID,
+        transactionId: String,
         exceptionStatus: TransactionStatus,
         reason: String,
-        actorUserId: UUID,
+        actorUserId: String,
     ) {
         require(exceptionStatus.isException) { "Not an exception state: $exceptionStatus" }
-        val existing = transactionDao.getById(transactionId.toString())
+        val existing = transactionDao.getById(transactionId)
             ?.toDomain() ?: error("Transaction not found")
         val now = System.currentTimeMillis()
         val updated = existing.copy(exceptionState = exceptionStatus, updatedAt = now)
         val log = ActivityLogEntity(
-            id = UUID.randomUUID().toString(),
-            transactionId = transactionId.toString(),
-            userId = actorUserId.toString(),
+            id = Uuid.random().toString(),
+            transactionId = transactionId,
+            userId = actorUserId,
             action = LogAction.EXCEPTION_SET.name,
             fromStatus = existing.currentStatus.name,
             toStatus = exceptionStatus.name,
@@ -157,15 +161,16 @@ class TransactionRepositoryImpl(
         transactionDao.advanceStatus(updated.toEntity(), log)
     }
 
-    override suspend fun clearExceptionState(transactionId: UUID, actorUserId: UUID) {
-        val existing = transactionDao.getById(transactionId.toString())
+    @OptIn(ExperimentalUuidApi::class)
+    override suspend fun clearExceptionState(transactionId: String, actorUserId: String) {
+        val existing = transactionDao.getById(transactionId)
             ?.toDomain() ?: error("Transaction not found")
         val now = System.currentTimeMillis()
         val updated = existing.copy(exceptionState = null, updatedAt = now)
         val log = ActivityLogEntity(
-            id = UUID.randomUUID().toString(),
-            transactionId = transactionId.toString(),
-            userId = actorUserId.toString(),
+            id = Uuid.random().toString(),
+            transactionId = transactionId,
+            userId = actorUserId,
             action = LogAction.EXCEPTION_CLEARED.name,
             fromStatus = existing.exceptionState?.name,
             toStatus = existing.currentStatus.name,
@@ -175,8 +180,8 @@ class TransactionRepositoryImpl(
         transactionDao.advanceStatus(updated.toEntity(), log)
     }
 
-    override fun observeActivityLog(transactionId: UUID): Flow<List<ActivityLog>> =
-        activityLogDao.observeForTransaction(transactionId.toString())
+    override fun observeActivityLog(transactionId: String): Flow<List<ActivityLog>> =
+        activityLogDao.observeForTransaction(transactionId)
             .map { it.map { e -> e.toDomain() } }
 
     override suspend fun countByStatus(status: TransactionStatus): Int =

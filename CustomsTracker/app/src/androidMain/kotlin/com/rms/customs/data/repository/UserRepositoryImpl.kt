@@ -10,7 +10,6 @@ import com.rms.customs.domain.repository.UserRepository
 import com.rms.customs.domain.usecase.PasswordHasher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.util.UUID
 
 class UserRepositoryImpl(
     private val userDao: UserDao,
@@ -19,8 +18,8 @@ class UserRepositoryImpl(
     override fun observeAll(): Flow<List<User>> =
         userDao.observeAll().map { it.map { e -> e.toDomain() } }
 
-    override suspend fun getById(id: UUID): User? =
-        userDao.getById(id.toString())?.toDomain()
+    override suspend fun getById(id: String): User? =
+        userDao.getById(id)?.toDomain()
 
     override suspend fun getByUsername(username: String): User? =
         userDao.getByUsername(username)?.toDomain()
@@ -30,12 +29,12 @@ class UserRepositoryImpl(
     }
 
     override suspend fun update(user: User) {
-        val existing = userDao.getById(user.id.toString()) ?: error("User not found")
+        val existing = userDao.getById(user.id) ?: error("User not found")
         userDao.update(user.toEntity(existing.passwordHash))
     }
 
-    override suspend fun deactivate(id: UUID) {
-        userDao.deactivate(id.toString())
+    override suspend fun deactivate(id: String) {
+        userDao.deactivate(id)
     }
 
     override suspend fun verifyCredentials(username: String, password: String): User? {
@@ -43,11 +42,11 @@ class UserRepositoryImpl(
         return if (PasswordHasher.verify(password, entity.passwordHash)) entity.toDomain() else null
     }
 
-    override suspend fun updateLastLogin(id: UUID) {
-        userDao.updateLastLogin(id.toString(), System.currentTimeMillis())
+    override suspend fun updateLastLogin(id: String) {
+        userDao.updateLastLogin(id, System.currentTimeMillis())
     }
 
-    override suspend fun updateRole(id: UUID, role: UserRole, department: Department?) {
-        userDao.updateRole(id.toString(), role.name, department?.name)
+    override suspend fun updateRole(id: String, role: UserRole, department: Department?) {
+        userDao.updateRole(id, role.name, department?.name)
     }
 }

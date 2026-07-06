@@ -16,7 +16,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
-import java.util.UUID
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 sealed class UploadState {
     object Idle : UploadState()
@@ -31,7 +32,7 @@ class DocumentViewModel(
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
-    private val txId: UUID = UUID.fromString(requireNotNull(savedStateHandle["id"]))
+    private val txId: String = requireNotNull(savedStateHandle["id"])
 
     val documents: StateFlow<List<TransactionDocument>> =
         documentRepository.observeForTransaction(txId)
@@ -40,12 +41,13 @@ class DocumentViewModel(
     private val _uploadState = MutableStateFlow<UploadState>(UploadState.Idle)
     val uploadState: StateFlow<UploadState> = _uploadState
 
-    fun uploadFromContentUri(uri: Uri, docType: DocumentType, userId: UUID) {
+    @OptIn(ExperimentalUuidApi::class)
+    fun uploadFromContentUri(uri: Uri, docType: DocumentType, userId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             _uploadState.value = UploadState.Loading
             runCatching {
                 val extension = getMimeExtension(uri)
-                val tempFile = File(appContext.cacheDir, "upload_${UUID.randomUUID()}.$extension")
+                val tempFile = File(appContext.cacheDir, "upload_${Uuid.random()}.$extension")
                 appContext.contentResolver.openInputStream(uri)?.use { input ->
                     tempFile.outputStream().use { output -> input.copyTo(output) }
                 } ?: error("فشل فتح الملف")
@@ -57,7 +59,7 @@ class DocumentViewModel(
         }
     }
 
-    fun uploadFromFile(file: File, docType: DocumentType, userId: UUID) {
+    fun uploadFromFile(file: File, docType: DocumentType, userId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             _uploadState.value = UploadState.Loading
             runCatching { doUpload(file, docType, userId) }
@@ -66,7 +68,7 @@ class DocumentViewModel(
         }
     }
 
-    fun delete(docId: UUID) {
+    fun delete(docId: String) {
         viewModelScope.launch {
             val doc = documents.value.firstOrNull { it.id == docId } ?: return@launch
             File(doc.filePath).delete()
@@ -86,10 +88,11 @@ class DocumentViewModel(
 
     fun resetUploadState() { _uploadState.value = UploadState.Idle }
 
-    private suspend fun doUpload(sourceFile: File, docType: DocumentType, userId: UUID) {
+    @OptIn(ExperimentalUuidApi::class)
+    private suspend fun doUpload(sourceFile: File, docType: DocumentType, userId: String) {
         val destDir = File(appContext.filesDir, "documents/$txId").apply { mkdirs() }
         val ext = sourceFile.extension.ifBlank { "bin" }
-        val destFile = File(destDir, "${UUID.randomUUID()}.$ext")
+        val destFile = File(destDir, "${Uuid.random()}.$ext")
         sourceFile.copyTo(destFile, overwrite = true)
 
         if (destFile.isImageFile() && destFile.length() > 2 * 1024 * 1024L) {
@@ -98,11 +101,11 @@ class DocumentViewModel(
 
         documentRepository.save(
             TransactionDocument(
-                id = UUID.randomUUID(),
+                id = Uuid.random().toString(),
                 transactionId = txId,
                 phaseRef = docType.requiredPhase.toString(),
                 documentType = docType,
-                filename = sourceFile.name.ifBlank { "${UUID.randomUUID()}.$ext" },
+                filename = sourceFile.name.ifBlank { "${Uuid.random()}.$ext" },
                 filePath = destFile.absolutePath,
                 uploadedAt = System.currentTimeMillis(),
                 uploadedByUserId = userId,

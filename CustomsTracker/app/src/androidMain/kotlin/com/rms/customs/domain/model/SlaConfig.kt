@@ -1,9 +1,7 @@
 package com.rms.customs.domain.model
 
-import java.util.UUID
-
 data class SlaConfig(
-    val id: UUID,
+    val id: String,
     val phaseNumber: Int,
     val subPhase: String,
     val targetDays: Int,

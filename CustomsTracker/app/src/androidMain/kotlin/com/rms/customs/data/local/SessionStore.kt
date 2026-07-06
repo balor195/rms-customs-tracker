@@ -3,7 +3,6 @@ package com.rms.customs.data.local
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import java.util.UUID
 
 private const val SESSION_FILE   = "customs_session"
 private const val KEY_USER_ID    = "user_id"
@@ -25,22 +24,22 @@ class SessionStore(context: Context) {
         )
     }
 
-    fun save(userId: UUID) {
+    fun save(userId: String) {
         prefs.edit()
-            .putString(KEY_USER_ID, userId.toString())
+            .putString(KEY_USER_ID, userId)
             .putLong(KEY_LOGIN_TIME, System.currentTimeMillis())
             .apply()
     }
 
     /** Returns (userId, loginTime) if a valid non-expired session exists, null otherwise. */
-    fun load(): Pair<UUID, Long>? {
+    fun load(): Pair<String, Long>? {
         val idStr     = prefs.getString(KEY_USER_ID, null) ?: return null
         val loginTime = prefs.getLong(KEY_LOGIN_TIME, 0L)
         if (System.currentTimeMillis() - loginTime > SESSION_TTL_MS) {
             clear()
             return null
         }
-        return Pair(UUID.fromString(idStr), loginTime)
+        return Pair(idStr, loginTime)
     }
 
     fun clear() {

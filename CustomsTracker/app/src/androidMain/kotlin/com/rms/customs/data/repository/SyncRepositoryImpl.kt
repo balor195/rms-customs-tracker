@@ -7,7 +7,8 @@ import com.rms.customs.data.remote.dto.SyncPushRequest
 import com.rms.customs.data.remote.dto.toEntity
 import com.rms.customs.data.remote.dto.toSyncDto
 import com.rms.customs.domain.repository.SyncRepository
-import java.util.UUID
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 class SyncRepositoryImpl(
     private val context: Context,
@@ -23,10 +24,11 @@ class SyncRepositoryImpl(
 
     private fun setLastSyncTime(t: Long) = prefs.edit().putLong("last_sync_ms", t).apply()
 
+    @OptIn(ExperimentalUuidApi::class)
     private fun deviceId(): String {
         var id = prefs.getString("device_id", null)
         if (id == null) {
-            id = UUID.randomUUID().toString()
+            id = Uuid.random().toString()
             prefs.edit().putString("device_id", id).apply()
         }
         return id!!

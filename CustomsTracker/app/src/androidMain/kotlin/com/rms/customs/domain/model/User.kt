@@ -2,10 +2,9 @@ package com.rms.customs.domain.model
 
 import com.rms.customs.domain.model.enums.Department
 import com.rms.customs.domain.model.enums.UserRole
-import java.util.UUID
 
 data class User(
-    val id: UUID,
+    val id: String,
     val username: String,
     val displayName: String,
     val displayNameAr: String,

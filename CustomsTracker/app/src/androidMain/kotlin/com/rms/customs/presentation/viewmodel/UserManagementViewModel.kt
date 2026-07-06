@@ -12,7 +12,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.UUID
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 data class CreateUserForm(
     val displayNameEn: String = "",
@@ -36,6 +37,7 @@ class UserManagementViewModel(
     private val _successMessage = MutableStateFlow<String?>(null)
     val successMessage: StateFlow<String?> = _successMessage.asStateFlow()
 
+    @OptIn(ExperimentalUuidApi::class)
     fun createUser(form: CreateUserForm) = viewModelScope.launch {
         if (form.displayNameAr.isBlank() || form.username.isBlank() || form.password.length < 8) {
             _errorMessage.value = "الاسم والمستخدم مطلوبان. كلمة المرور 8 أحرف على الأقل."
@@ -47,7 +49,7 @@ class UserManagementViewModel(
         }
         runCatching {
             val user = User(
-                id            = UUID.randomUUID(),
+                id            = Uuid.random().toString(),
                 username      = form.username.lowercase().trim(),
                 displayName   = form.displayNameEn.ifBlank { form.displayNameAr },
                 displayNameAr = form.displayNameAr,
@@ -64,14 +66,14 @@ class UserManagementViewModel(
         }
     }
 
-    fun updateRole(userId: UUID, role: UserRole, department: Department?) = viewModelScope.launch {
+    fun updateRole(userId: String, role: UserRole, department: Department?) = viewModelScope.launch {
         val resolvedDepartment = if (role.seesAllDivisions) null else department
         runCatching { userRepository.updateRole(userId, role, resolvedDepartment) }
             .onSuccess  { _successMessage.value = "تم تحديث الدور" }
             .onFailure  { _errorMessage.value   = "فشل تحديث الدور" }
     }
 
-    fun deactivate(userId: UUID) = viewModelScope.launch {
+    fun deactivate(userId: String) = viewModelScope.launch {
         runCatching { userRepository.deactivate(userId) }
             .onSuccess  { _successMessage.value = "تم تعطيل المستخدم" }
             .onFailure  { _errorMessage.value   = "فشل تعطيل المستخدم" }

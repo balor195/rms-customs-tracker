@@ -6,7 +6,6 @@ import androidx.room.PrimaryKey
 import com.rms.customs.domain.model.User
 import com.rms.customs.domain.model.enums.Department
 import com.rms.customs.domain.model.enums.UserRole
-import java.util.UUID
 
 @Entity(
     tableName = "users",
@@ -25,7 +24,7 @@ data class UserEntity(
 )
 
 fun UserEntity.toDomain() = User(
-    id = UUID.fromString(id),
+    id = id,
     username = username,
     displayName = displayName,
     displayNameAr = displayNameAr,
@@ -36,7 +35,7 @@ fun UserEntity.toDomain() = User(
 )
 
 fun User.toEntity(passwordHash: String) = UserEntity(
-    id = id.toString(),
+    id = id,
     username = username,
     displayName = displayName,
     displayNameAr = displayNameAr,

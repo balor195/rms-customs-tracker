@@ -5,10 +5,9 @@ import com.rms.customs.domain.model.enums.Department
 import com.rms.customs.domain.model.enums.Priority
 import com.rms.customs.domain.model.enums.TransactionPhase
 import com.rms.customs.domain.model.enums.TransactionStatus
-import java.util.UUID
 
 data class Transaction(
-    val id: UUID,
+    val id: String,
     val transactionRef: String,                    // internal ref e.g. "RMS-2026-0042"
     val title: String,
     val division: Department? = null,               // شعبة الدواء / المستهلكات / الأجهزة
@@ -31,7 +30,7 @@ data class Transaction(
     val exceptionState: TransactionStatus? = null,  // BLOCKED / ON_HOLD / DISPUTED overlay
     val priority: Priority = Priority.NORMAL,
     val createdAt: Long,
-    val createdByUserId: UUID,
+    val createdByUserId: String,
     val updatedAt: Long,
     val closedAt: Long? = null,
     val notes: String? = null,

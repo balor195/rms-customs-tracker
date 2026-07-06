@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 class SlaAdminViewModel(
     private val slaRepository: SlaRepository,
@@ -20,7 +19,7 @@ class SlaAdminViewModel(
 
     fun save(config: SlaConfig) = viewModelScope.launch { slaRepository.upsert(config) }
 
-    fun setActive(id: UUID, active: Boolean) = viewModelScope.launch {
+    fun setActive(id: String, active: Boolean) = viewModelScope.launch {
         slaRepository.setActive(id, active)
     }
 }
