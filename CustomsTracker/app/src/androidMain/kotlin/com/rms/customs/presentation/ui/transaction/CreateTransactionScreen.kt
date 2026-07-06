@@ -42,13 +42,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rms.customs.domain.model.enums.Beneficiary
 import com.rms.customs.domain.model.enums.Department
 import com.rms.customs.domain.model.enums.Priority
 import com.rms.customs.presentation.ui.LocalUserSession
 import com.rms.customs.presentation.viewmodel.CreateTransactionViewModel
+import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -58,7 +58,7 @@ import java.util.Locale
 fun CreateTransactionScreen(
     onBack: () -> Unit,
     onCreated: () -> Unit,
-    viewModel: CreateTransactionViewModel = hiltViewModel(),
+    viewModel: CreateTransactionViewModel = koinViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val session = LocalUserSession.current

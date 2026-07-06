@@ -9,11 +9,8 @@ import com.rms.customs.domain.repository.NotificationRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.UUID
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class NotificationRepositoryImpl @Inject constructor(
+class NotificationRepositoryImpl(
     private val notificationDao: NotificationDao,
 ) : NotificationRepository {
 

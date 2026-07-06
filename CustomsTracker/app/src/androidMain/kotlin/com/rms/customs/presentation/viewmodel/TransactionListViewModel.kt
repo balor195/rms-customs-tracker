@@ -8,13 +8,11 @@ import com.rms.customs.domain.model.enums.Beneficiary
 import com.rms.customs.domain.model.enums.Department
 import com.rms.customs.domain.repository.TransactionRepository
 import com.rms.customs.domain.usecase.isVisibleTo
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import javax.inject.Inject
 
 enum class TxFilter(val labelAr: String) {
     ALL("الكل"),
@@ -32,8 +30,7 @@ data class TransactionListUiState(
     val isLoading: Boolean = true,
 )
 
-@HiltViewModel
-class TransactionListViewModel @Inject constructor(
+class TransactionListViewModel(
     transactionRepository: TransactionRepository,
 ) : ViewModel() {
 

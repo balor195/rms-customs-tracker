@@ -12,11 +12,8 @@ import com.rms.customs.domain.repository.DocumentRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.UUID
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class DocumentRepositoryImpl @Inject constructor(
+class DocumentRepositoryImpl(
     private val documentDao: DocumentDao,
     private val activityLogDao: ActivityLogDao,
 ) : DocumentRepository {

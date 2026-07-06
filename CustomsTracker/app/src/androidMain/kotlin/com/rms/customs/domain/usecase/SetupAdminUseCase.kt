@@ -4,14 +4,13 @@ import com.rms.customs.domain.model.User
 import com.rms.customs.domain.model.enums.UserRole
 import com.rms.customs.domain.repository.UserRepository
 import java.util.UUID
-import javax.inject.Inject
 
 sealed class SetupResult {
     data class Success(val user: User) : SetupResult()
     data class Error(val reason: String) : SetupResult()
 }
 
-class SetupAdminUseCase @Inject constructor(
+class SetupAdminUseCase(
     private val userRepository: UserRepository,
 ) {
     suspend operator fun invoke(

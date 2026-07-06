@@ -7,7 +7,6 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose.multiplatform)
-    alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
 }
 
@@ -67,10 +66,11 @@ kotlin {
             implementation(libs.room.runtime)
             implementation(libs.room.ktx)
 
-            // Hilt
-            implementation(libs.hilt.android)
-            implementation(libs.hilt.navigation.compose)
-            implementation(libs.hilt.work)
+            // Koin (BOM applied via androidMainImplementation below)
+            implementation(libs.koin.core)
+            implementation(libs.koin.android)
+            implementation(libs.koin.androidx.compose)
+            implementation(libs.koin.androidx.workmanager)
 
             // Network (ready for Phase 9)
             implementation(libs.retrofit)
@@ -103,7 +103,6 @@ kotlin {
             implementation(libs.room.testing)
             implementation(libs.coroutines.test)
             implementation(libs.androidx.test.runner)
-            implementation(libs.hilt.android.testing)
         }
 
         iosMain.dependencies {
@@ -161,13 +160,11 @@ android {
 
 dependencies {
     add("androidMainImplementation", platform(libs.compose.bom))
+    add("androidMainImplementation", platform(libs.koin.bom))
 
     // Debug
     add("debugImplementation", libs.compose.ui.tooling)
 
     // KSP (Android-only annotation processing)
     add("kspAndroid", libs.room.compiler)
-    add("kspAndroid", libs.hilt.compiler)
-    add("kspAndroid", libs.hilt.work.compiler)
-    add("kspAndroidTest", libs.hilt.compiler)
 }

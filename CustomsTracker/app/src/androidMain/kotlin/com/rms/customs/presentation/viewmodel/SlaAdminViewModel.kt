@@ -4,16 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rms.customs.domain.model.SlaConfig
 import com.rms.customs.domain.repository.SlaRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
-import javax.inject.Inject
 
-@HiltViewModel
-class SlaAdminViewModel @Inject constructor(
+class SlaAdminViewModel(
     private val slaRepository: SlaRepository,
 ) : ViewModel() {
 

@@ -6,7 +6,6 @@ import com.rms.customs.domain.model.User
 import com.rms.customs.domain.model.enums.Department
 import com.rms.customs.domain.model.enums.UserRole
 import com.rms.customs.domain.repository.UserRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +13,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
-import javax.inject.Inject
 
 data class CreateUserForm(
     val displayNameEn: String = "",
@@ -25,8 +23,7 @@ data class CreateUserForm(
     val department: Department = Department.PHARMACY,
 )
 
-@HiltViewModel
-class UserManagementViewModel @Inject constructor(
+class UserManagementViewModel(
     private val userRepository: UserRepository,
 ) : ViewModel() {
 

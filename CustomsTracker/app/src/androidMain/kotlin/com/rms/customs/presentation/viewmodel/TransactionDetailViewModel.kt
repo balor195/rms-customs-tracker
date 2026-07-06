@@ -9,14 +9,12 @@ import com.rms.customs.domain.model.enums.TransactionStatus
 import com.rms.customs.domain.model.enums.UserRole
 import com.rms.customs.domain.repository.TransactionRepository
 import com.rms.customs.domain.statemachine.TransactionStateMachine
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
-import javax.inject.Inject
 
 sealed class TransitionUiState {
     object Idle    : TransitionUiState()
@@ -25,8 +23,7 @@ sealed class TransitionUiState {
     data class Error(val message: String) : TransitionUiState()
 }
 
-@HiltViewModel
-class TransactionDetailViewModel @Inject constructor(
+class TransactionDetailViewModel(
     private val transactionRepository: TransactionRepository,
     private val stateMachine: TransactionStateMachine,
     savedStateHandle: SavedStateHandle,

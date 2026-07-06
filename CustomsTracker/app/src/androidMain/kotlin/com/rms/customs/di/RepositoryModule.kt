@@ -12,31 +12,17 @@ import com.rms.customs.domain.repository.SlaRepository
 import com.rms.customs.domain.repository.SyncRepository
 import com.rms.customs.domain.repository.TransactionRepository
 import com.rms.customs.domain.repository.UserRepository
-import dagger.Binds
-import dagger.Module
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
-import javax.inject.Singleton
+import org.koin.android.ext.koin.androidContext
+import org.koin.dsl.module
 
-@Module
-@InstallIn(SingletonComponent::class)
-abstract class RepositoryModule {
+val repositoryModule = module {
 
-    @Binds @Singleton
-    abstract fun bindTransactionRepository(impl: TransactionRepositoryImpl): TransactionRepository
-
-    @Binds @Singleton
-    abstract fun bindUserRepository(impl: UserRepositoryImpl): UserRepository
-
-    @Binds @Singleton
-    abstract fun bindDocumentRepository(impl: DocumentRepositoryImpl): DocumentRepository
-
-    @Binds @Singleton
-    abstract fun bindSlaRepository(impl: SlaRepositoryImpl): SlaRepository
-
-    @Binds @Singleton
-    abstract fun bindNotificationRepository(impl: NotificationRepositoryImpl): NotificationRepository
-
-    @Binds @Singleton
-    abstract fun bindSyncRepository(impl: SyncRepositoryImpl): SyncRepository
+    single<TransactionRepository> {
+        TransactionRepositoryImpl(get(), get(), get(), get(), get())
+    }
+    single<UserRepository> { UserRepositoryImpl(get()) }
+    single<DocumentRepository> { DocumentRepositoryImpl(get(), get()) }
+    single<SlaRepository> { SlaRepositoryImpl(get()) }
+    single<NotificationRepository> { NotificationRepositoryImpl(get()) }
+    single<SyncRepository> { SyncRepositoryImpl(androidContext(), get(), get()) }
 }

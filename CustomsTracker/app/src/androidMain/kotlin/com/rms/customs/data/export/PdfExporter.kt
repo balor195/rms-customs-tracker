@@ -6,19 +6,15 @@ import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import com.rms.customs.domain.model.Transaction
 import com.rms.customs.domain.model.enums.Department
-import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlin.math.roundToInt
 
-@Singleton
-class PdfExporter @Inject constructor(
-    @ApplicationContext private val context: Context,
+class PdfExporter(
+    private val context: Context,
 ) {
     companion object {
         private const val PAGE_W  = 595

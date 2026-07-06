@@ -7,14 +7,12 @@ import com.rms.customs.domain.model.User
 import com.rms.customs.domain.model.enums.Department
 import com.rms.customs.domain.repository.TransactionRepository
 import com.rms.customs.domain.usecase.isVisibleTo
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import java.util.Calendar
-import javax.inject.Inject
 
 data class DivisionValueEntry(
     val labelAr: String,
@@ -34,8 +32,7 @@ data class DashboardStats(
     val isLoaded: Boolean = false,
 )
 
-@HiltViewModel
-class DashboardViewModel @Inject constructor(
+class DashboardViewModel(
     private val transactionRepository: TransactionRepository,
 ) : ViewModel() {
 

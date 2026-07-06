@@ -2,7 +2,6 @@ package com.rms.customs.domain.usecase
 
 import com.rms.customs.domain.model.User
 import com.rms.customs.domain.repository.UserRepository
-import javax.inject.Inject
 
 sealed class LoginResult {
     data class Success(val user: User) : LoginResult()
@@ -10,7 +9,7 @@ sealed class LoginResult {
     object AccountInactive : LoginResult()
 }
 
-class LoginUseCase @Inject constructor(
+class LoginUseCase(
     private val userRepository: UserRepository,
 ) {
     suspend operator fun invoke(username: String, password: String): LoginResult {

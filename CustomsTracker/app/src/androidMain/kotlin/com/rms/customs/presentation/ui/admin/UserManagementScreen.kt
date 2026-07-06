@@ -50,7 +50,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rms.customs.domain.model.User
 import com.rms.customs.domain.model.enums.Department
@@ -58,12 +57,13 @@ import com.rms.customs.domain.model.enums.UserRole
 import com.rms.customs.presentation.ui.LocalUserSession
 import com.rms.customs.presentation.viewmodel.CreateUserForm
 import com.rms.customs.presentation.viewmodel.UserManagementViewModel
+import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserManagementScreen(
     onBack: () -> Unit,
-    viewModel: UserManagementViewModel = hiltViewModel(),
+    viewModel: UserManagementViewModel = koinViewModel(),
 ) {
     val session       = LocalUserSession.current
     val users         by viewModel.users.collectAsStateWithLifecycle()

@@ -42,12 +42,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rms.customs.domain.model.AppNotification
 import com.rms.customs.domain.model.NotificationType
 import com.rms.customs.presentation.viewmodel.NotifFilter
 import com.rms.customs.presentation.viewmodel.NotificationViewModel
+import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -58,7 +58,7 @@ import java.util.UUID
 fun NotificationCenterScreen(
     onTransactionClick: (String) -> Unit,
     onBack: () -> Unit,
-    viewModel: NotificationViewModel = hiltViewModel(),
+    viewModel: NotificationViewModel = koinViewModel(),
 ) {
     val notifications  by viewModel.filtered.collectAsStateWithLifecycle()
     val unreadCount    by viewModel.unreadCount.collectAsStateWithLifecycle()

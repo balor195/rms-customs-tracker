@@ -9,13 +9,9 @@ import androidx.core.app.NotificationCompat
 import com.rms.customs.MainActivity
 import com.rms.customs.domain.model.AppNotification
 import com.rms.customs.domain.model.NotificationType
-import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class CustomsNotificationManager @Inject constructor(
-    @ApplicationContext private val context: Context,
+class CustomsNotificationManager(
+    private val context: Context,
 ) {
     companion object {
         const val CHANNEL_SLA_BREACH        = "customs_sla_breach"

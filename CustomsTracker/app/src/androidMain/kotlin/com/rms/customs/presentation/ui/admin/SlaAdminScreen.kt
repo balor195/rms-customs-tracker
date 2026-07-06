@@ -38,16 +38,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rms.customs.domain.model.SlaConfig
 import com.rms.customs.presentation.viewmodel.SlaAdminViewModel
+import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SlaAdminScreen(
     onBack: () -> Unit,
-    viewModel: SlaAdminViewModel = hiltViewModel(),
+    viewModel: SlaAdminViewModel = koinViewModel(),
 ) {
     val configs by viewModel.configs.collectAsStateWithLifecycle()
     var editing  by remember { mutableStateOf<SlaConfig?>(null) }

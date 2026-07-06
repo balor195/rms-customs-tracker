@@ -7,14 +7,10 @@ import com.rms.customs.data.remote.dto.SyncPushRequest
 import com.rms.customs.data.remote.dto.toEntity
 import com.rms.customs.data.remote.dto.toSyncDto
 import com.rms.customs.domain.repository.SyncRepository
-import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.UUID
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class SyncRepositoryImpl @Inject constructor(
-    @ApplicationContext private val context: Context,
+class SyncRepositoryImpl(
+    private val context: Context,
     private val api: CustomsApi,
     private val transactionDao: TransactionDao,
 ) : SyncRepository {

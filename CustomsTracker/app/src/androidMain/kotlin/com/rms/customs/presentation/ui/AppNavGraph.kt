@@ -9,7 +9,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -26,9 +25,10 @@ import com.rms.customs.presentation.ui.notification.NotificationCenterScreen
 import com.rms.customs.presentation.ui.transaction.CreateTransactionScreen
 import com.rms.customs.presentation.ui.transaction.TransactionDetailScreen
 import com.rms.customs.presentation.viewmodel.AuthViewModel
+import org.koin.androidx.compose.koinViewModel
 
 @Composable
-fun AppNavGraph(authViewModel: AuthViewModel = hiltViewModel()) {
+fun AppNavGraph(authViewModel: AuthViewModel = koinViewModel()) {
     val navController = rememberNavController()
     val uiState by authViewModel.uiState.collectAsStateWithLifecycle()
 

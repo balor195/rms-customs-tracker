@@ -3,16 +3,13 @@ package com.rms.customs.domain.statemachine
 import com.rms.customs.domain.model.Transaction
 import com.rms.customs.domain.model.enums.TransactionStatus
 import com.rms.customs.domain.model.enums.TransactionStatus.*
-import javax.inject.Inject
-import javax.inject.Singleton
 
 sealed class TransitionResult {
     data class Success(val newStatus: TransactionStatus) : TransitionResult()
     data class Failure(val reason: String) : TransitionResult()
 }
 
-@Singleton
-class TransactionStateMachine @Inject constructor() {
+class TransactionStateMachine {
 
     private val allowedTransitions: Map<TransactionStatus, Set<TransactionStatus>> = mapOf(
         DRAFT               to setOf(TENDER_PREPARATION),

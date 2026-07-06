@@ -9,14 +9,12 @@ import com.rms.customs.domain.model.enums.Priority
 import com.rms.customs.domain.model.enums.TransactionPhase
 import com.rms.customs.domain.model.enums.TransactionStatus
 import com.rms.customs.domain.repository.TransactionRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
-import javax.inject.Inject
 
 data class CreateTransactionUiState(
     val generatedRef: String = "",
@@ -25,8 +23,7 @@ data class CreateTransactionUiState(
     val error: String?       = null,
 )
 
-@HiltViewModel
-class CreateTransactionViewModel @Inject constructor(
+class CreateTransactionViewModel(
     private val transactionRepository: TransactionRepository,
 ) : ViewModel() {
 

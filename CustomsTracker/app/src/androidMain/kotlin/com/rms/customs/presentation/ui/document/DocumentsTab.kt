@@ -37,7 +37,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rms.customs.domain.model.TransactionDocument
 import com.rms.customs.domain.model.enums.DocumentType
@@ -45,6 +44,7 @@ import com.rms.customs.presentation.ui.LocalUserSession
 import com.rms.customs.presentation.ui.theme.CustomsColors
 import com.rms.customs.presentation.viewmodel.DocumentViewModel
 import com.rms.customs.presentation.viewmodel.UploadState
+import org.koin.androidx.compose.koinViewModel
 import java.io.File
 import java.util.UUID
 
@@ -52,7 +52,7 @@ import java.util.UUID
 fun DocumentsTab(
     currentPhaseNumber: Int,
     canUpload: Boolean,
-    viewModel: DocumentViewModel = hiltViewModel(),
+    viewModel: DocumentViewModel = koinViewModel(),
 ) {
     val documents by viewModel.documents.collectAsStateWithLifecycle()
     val uploadState by viewModel.uploadState.collectAsStateWithLifecycle()

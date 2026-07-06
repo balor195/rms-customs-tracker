@@ -40,20 +40,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rms.customs.presentation.ui.LocalUserSession
 import com.rms.customs.presentation.ui.theme.CustomsColors
 import com.rms.customs.presentation.viewmodel.DashboardStats
 import com.rms.customs.presentation.viewmodel.DashboardViewModel
 import com.rms.customs.presentation.viewmodel.DivisionValueEntry
+import org.koin.androidx.compose.koinViewModel
 import kotlin.math.roundToInt
 
 @Composable
 fun DashboardScreen(
     onTransactionClick: (String) -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: DashboardViewModel = hiltViewModel(),
+    viewModel: DashboardViewModel = koinViewModel(),
 ) {
     val stats   by viewModel.stats.collectAsStateWithLifecycle()
     val session = LocalUserSession.current

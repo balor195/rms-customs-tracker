@@ -8,14 +8,11 @@ import androidx.lifecycle.viewModelScope
 import com.rms.customs.data.export.CsvExporter
 import com.rms.customs.data.export.PdfExporter
 import com.rms.customs.domain.repository.TransactionRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 enum class ReportType {
     WEEKLY, MONTHLY, EXECUTIVE, BY_OFFICER, EXPECTED_SHIPMENTS, VALUE_BY_DIVISION;
@@ -46,9 +43,8 @@ sealed class ExportState {
     data class Error(val message: String) : ExportState()
 }
 
-@HiltViewModel
-class ReportViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+class ReportViewModel(
+    private val context: Context,
     private val transactionRepository: TransactionRepository,
     private val pdfExporter: PdfExporter,
     private val csvExporter: CsvExporter,

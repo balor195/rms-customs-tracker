@@ -3,17 +3,13 @@ package com.rms.customs.data.export
 import android.content.Context
 import com.rms.customs.domain.model.Transaction
 import com.rms.customs.domain.model.enums.Department
-import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class CsvExporter @Inject constructor(
-    @ApplicationContext private val context: Context,
+class CsvExporter(
+    private val context: Context,
 ) {
     private fun reportsDir() = File(context.filesDir, "reports").apply { mkdirs() }
     private fun ts() = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())

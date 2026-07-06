@@ -9,8 +9,6 @@ import androidx.core.content.FileProvider
 import com.rms.customs.domain.model.TransactionDocument
 import com.rms.customs.domain.model.enums.DocumentType
 import com.rms.customs.domain.repository.DocumentRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,7 +17,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.UUID
-import javax.inject.Inject
 
 sealed class UploadState {
     object Idle : UploadState()
@@ -28,10 +25,9 @@ sealed class UploadState {
     data class Error(val message: String) : UploadState()
 }
 
-@HiltViewModel
-class DocumentViewModel @Inject constructor(
+class DocumentViewModel(
     private val documentRepository: DocumentRepository,
-    @ApplicationContext private val appContext: Context,
+    private val appContext: Context,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 

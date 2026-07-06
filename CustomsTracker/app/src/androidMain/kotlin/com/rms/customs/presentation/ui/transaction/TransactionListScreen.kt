@@ -38,13 +38,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.rms.customs.presentation.ui.ShimmerBox
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rms.customs.domain.model.enums.Beneficiary
 import com.rms.customs.domain.model.enums.Department
 import com.rms.customs.presentation.ui.LocalUserSession
 import com.rms.customs.presentation.viewmodel.TransactionListViewModel
 import com.rms.customs.presentation.viewmodel.TxFilter
+import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun TransactionListScreen(
@@ -53,7 +53,7 @@ fun TransactionListScreen(
     isRefreshing: Boolean = false,
     onRefresh: () -> Unit = {},
     modifier: Modifier = Modifier,
-    viewModel: TransactionListViewModel = hiltViewModel(),
+    viewModel: TransactionListViewModel = koinViewModel(),
 ) {
     val uiState   by viewModel.uiState.collectAsStateWithLifecycle()
     val session   = LocalUserSession.current

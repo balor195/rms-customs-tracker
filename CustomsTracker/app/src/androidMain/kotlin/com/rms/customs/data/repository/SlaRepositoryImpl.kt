@@ -8,11 +8,8 @@ import com.rms.customs.domain.repository.SlaRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.UUID
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class SlaRepositoryImpl @Inject constructor(
+class SlaRepositoryImpl(
     private val slaConfigDao: SlaConfigDao,
 ) : SlaRepository {
 

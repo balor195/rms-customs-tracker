@@ -52,7 +52,6 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.rms.customs.presentation.ui.dashboard.DashboardScreen
@@ -62,6 +61,7 @@ import com.rms.customs.presentation.ui.transaction.TransactionListScreen
 import com.rms.customs.presentation.viewmodel.NotificationViewModel
 import com.rms.customs.presentation.viewmodel.SyncState
 import com.rms.customs.presentation.viewmodel.SyncViewModel
+import org.koin.androidx.compose.koinViewModel
 
 // Light salmon-red for sync error state — legible against the dark navy top bar
 private val TopBarErrorTint = Color(0xFFFF8A80)
@@ -72,8 +72,8 @@ fun MainScreen(
     navController: NavController,
     onLogout: () -> Unit,
     onExitViewAs: () -> Unit,
-    notifViewModel: NotificationViewModel = hiltViewModel(),
-    syncViewModel: SyncViewModel = hiltViewModel(),
+    notifViewModel: NotificationViewModel = koinViewModel(),
+    syncViewModel: SyncViewModel = koinViewModel(),
 ) {
     val session     = LocalUserSession.current
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }

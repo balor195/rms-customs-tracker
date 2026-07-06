@@ -3,18 +3,14 @@ package com.rms.customs.data.local
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.UUID
-import javax.inject.Inject
-import javax.inject.Singleton
 
 private const val SESSION_FILE   = "customs_session"
 private const val KEY_USER_ID    = "user_id"
 private const val KEY_LOGIN_TIME = "login_time"
 private const val SESSION_TTL_MS = 8L * 3600 * 1000   // 8 hours
 
-@Singleton
-class SessionStore @Inject constructor(@ApplicationContext context: Context) {
+class SessionStore(context: Context) {
 
     private val prefs by lazy {
         val masterKey = MasterKey.Builder(context)

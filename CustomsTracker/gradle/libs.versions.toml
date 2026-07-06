@@ -8,8 +8,7 @@ lifecycle              = "2.8.7"
 activity-compose       = "1.9.3"
 navigation-compose     = "2.8.5"
 room                   = "2.6.1"
-hilt                   = "2.52"
-hilt-androidx          = "1.2.0"
+koin                   = "4.0.0"
 retrofit               = "2.11.0"
 okhttp                 = "4.12.0"
 kotlinx-serialization  = "1.7.3"
@@ -43,12 +42,12 @@ navigation-compose             = { group = "androidx.navigation",       name = "
 room-runtime                   = { group = "androidx.room",             name = "room-runtime",                  version.ref = "room" }
 room-ktx                       = { group = "androidx.room",             name = "room-ktx",                      version.ref = "room" }
 room-compiler                  = { group = "androidx.room",             name = "room-compiler",                  version.ref = "room" }
-# Hilt
-hilt-android                   = { group = "com.google.dagger",         name = "hilt-android",                  version.ref = "hilt" }
-hilt-compiler                  = { group = "com.google.dagger",         name = "hilt-android-compiler",          version.ref = "hilt" }
-hilt-navigation-compose        = { group = "androidx.hilt",             name = "hilt-navigation-compose",        version.ref = "hilt-androidx" }
-hilt-work                      = { group = "androidx.hilt",             name = "hilt-work",                      version.ref = "hilt-androidx" }
-hilt-work-compiler             = { group = "androidx.hilt",             name = "hilt-compiler",                  version.ref = "hilt-androidx" }
+# Koin
+koin-bom                       = { group = "io.insert-koin",            name = "koin-bom",                       version.ref = "koin" }
+koin-core                      = { group = "io.insert-koin",            name = "koin-core" }
+koin-android                   = { group = "io.insert-koin",            name = "koin-android" }
+koin-androidx-compose          = { group = "io.insert-koin",            name = "koin-androidx-compose" }
+koin-androidx-workmanager      = { group = "io.insert-koin",            name = "koin-androidx-workmanager" }
 # Network
 retrofit                       = { group = "com.squareup.retrofit2",    name = "retrofit",                       version.ref = "retrofit" }
 retrofit-kotlinx-serialization = { group = "com.squareup.retrofit2",    name = "converter-kotlinx-serialization",version.ref = "retrofit" }
@@ -72,7 +71,6 @@ androidx-test-ext               = { group = "androidx.test.ext",          name =
 androidx-test-runner            = { group = "androidx.test",              name = "runner",                         version.ref = "androidx-test-runner" }
 room-testing                   = { group = "androidx.room",              name = "room-testing",                   version.ref = "room" }
 coroutines-test                = { group = "org.jetbrains.kotlinx",     name = "kotlinx-coroutines-test",        version.ref = "coroutines" }
-hilt-android-testing           = { group = "com.google.dagger",         name = "hilt-android-testing",           version.ref = "hilt" }
 security-crypto                = { group = "androidx.security",           name = "security-crypto",                version.ref = "security-crypto" }
 lifecycle-runtime-compose      = { group = "androidx.lifecycle",          name = "lifecycle-runtime-compose",      version.ref = "lifecycle-runtime-compose" }
 
@@ -83,5 +81,4 @@ kotlin-multiplatform   = { id = "org.jetbrains.kotlin.multiplatform",           
 kotlin-compose         = { id = "org.jetbrains.kotlin.plugin.compose",            version.ref = "kotlin" }
 kotlin-serialization   = { id = "org.jetbrains.kotlin.plugin.serialization",      version.ref = "kotlin" }
 compose-multiplatform  = { id = "org.jetbrains.compose",                          version.ref = "compose-multiplatform" }
-hilt                   = { id = "com.google.dagger.hilt.android",                 version.ref = "hilt" }
 ksp                    = { id = "com.google.devtools.ksp",                        version.ref = "ksp" }

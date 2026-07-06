@@ -55,7 +55,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rms.customs.domain.model.ActivityLog
 import com.rms.customs.domain.model.Transaction
@@ -67,6 +66,7 @@ import com.rms.customs.presentation.ui.document.DocumentsTab
 import com.rms.customs.presentation.ui.theme.CustomsColors
 import com.rms.customs.presentation.viewmodel.TransactionDetailViewModel
 import com.rms.customs.presentation.viewmodel.TransitionUiState
+import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale as JavaLocale
@@ -75,7 +75,7 @@ import java.util.Locale as JavaLocale
 @Composable
 fun TransactionDetailScreen(
     onBack: () -> Unit,
-    viewModel: TransactionDetailViewModel = hiltViewModel(),
+    viewModel: TransactionDetailViewModel = koinViewModel(),
 ) {
     val transaction  by viewModel.transaction.collectAsStateWithLifecycle()
     val activityLog  by viewModel.activityLog.collectAsStateWithLifecycle()

@@ -44,16 +44,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rms.customs.presentation.viewmodel.ExportState
 import com.rms.customs.presentation.viewmodel.ReportType
 import com.rms.customs.presentation.viewmodel.ReportViewModel
+import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun ReportScreen(
     modifier: Modifier = Modifier,
-    viewModel: ReportViewModel = hiltViewModel(),
+    viewModel: ReportViewModel = koinViewModel(),
 ) {
     val context      = LocalContext.current
     val selectedType by viewModel.selectedType.collectAsStateWithLifecycle()

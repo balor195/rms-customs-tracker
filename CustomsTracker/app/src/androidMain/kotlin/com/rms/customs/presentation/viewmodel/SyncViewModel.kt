@@ -3,12 +3,10 @@ package com.rms.customs.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rms.customs.domain.repository.SyncRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 sealed class SyncState {
     object Idle     : SyncState()
@@ -17,8 +15,7 @@ sealed class SyncState {
     data class Error(val message: String) : SyncState()
 }
 
-@HiltViewModel
-class SyncViewModel @Inject constructor(
+class SyncViewModel(
     private val syncRepository: SyncRepository,
 ) : ViewModel() {
 

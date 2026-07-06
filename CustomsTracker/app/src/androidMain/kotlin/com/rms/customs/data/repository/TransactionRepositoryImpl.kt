@@ -21,11 +21,8 @@ import com.rms.customs.notifications.CustomsNotificationManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.UUID
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class TransactionRepositoryImpl @Inject constructor(
+class TransactionRepositoryImpl(
     private val transactionDao: TransactionDao,
     private val activityLogDao: ActivityLogDao,
     private val notificationRepository: NotificationRepository,

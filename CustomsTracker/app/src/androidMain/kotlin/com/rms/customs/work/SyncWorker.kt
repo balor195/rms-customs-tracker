@@ -1,17 +1,13 @@
 package com.rms.customs.work
 
 import android.content.Context
-import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.rms.customs.domain.repository.SyncRepository
-import dagger.assisted.Assisted
-import dagger.assisted.AssistedInject
 
-@HiltWorker
-class SyncWorker @AssistedInject constructor(
-    @Assisted context: Context,
-    @Assisted params: WorkerParameters,
+class SyncWorker(
+    context: Context,
+    params: WorkerParameters,
     private val syncRepository: SyncRepository,
 ) : CoroutineWorker(context, params) {
 

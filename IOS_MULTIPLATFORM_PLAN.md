@@ -22,7 +22,7 @@ This is a large migration overall (Hilt→Koin, Retrofit→Ktor, Room→Room-KMP
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Skeleton, CI, domain migration | ✅ Done — 2026-07-06 |
-| 2 | DI & networking (Hilt→Koin, Retrofit→Ktor) | ⬜ Not started |
+| 2 | DI & networking (Hilt→Koin, Retrofit→Ktor) | 🔶 In progress — 2a done, 2026-07-06 |
 | 3 | Persistence (Room→Room-KMP, DataStore) | ⬜ Not started |
 | 4 | Platform abstractions (expect/actual) | ⬜ Not started |
 | 5 | UI migration to commonMain | ⬜ Not started |
@@ -69,12 +69,35 @@ gh run download <run-id> --repo balor195/rms-customs-tracker --name ios-launch-d
 
 ---
 
-## Phase 2 — DI & networking (not started)
+## Phase 2 — DI & networking (in progress)
 
-- Replace **Hilt** with **Koin** (KMP-compatible) across all modules/ViewModels/usecases. This is also the point to strip `javax.inject.Inject`/`@Singleton` from `LoginUseCase`, `SetupAdminUseCase`, `TransactionStateMachine` so they can move to `commonMain`.
+Split into four sequenced sub-steps (2a–2d) — see the approved plan at the top of this phase's work for the full rationale. Each sub-step is its own commit and independently verifiable; only 2d needs iOS CI.
+
+### Phase 2a — Koin migration ✅ Done — 2026-07-06
+
+- Removed Hilt entirely: plugin, `hilt-*`/`ksp` processor entries from `libs.versions.toml` and both `build.gradle.kts` files; added Koin 4.0.0 (`koin-core`, `koin-android`, `koin-androidx-compose`, `koin-androidx-workmanager`) via BOM.
+- `di/DatabaseModule.kt`, `di/NetworkModule.kt`, `di/RepositoryModule.kt` converted from Hilt `@Module`/`@Binds`/`@Provides` to Koin `module { single { ... } }` DSL. Added `di/CoreModule.kt` (SessionStore, CustomsNotificationManager, CsvExporter, PdfExporter, TransactionStateMachine, LoginUseCase, SetupAdminUseCase) and `di/ViewModelModule.kt` (all 11 ViewModels via `viewModel { ... }`).
+- Stripped `@Inject`/`@Singleton`/`@HiltViewModel`/`@AndroidEntryPoint`/`@HiltAndroidApp` everywhere — Koin needs no annotations, just plain constructors resolved via `get()` in module definitions. This included the three domain/usecase classes (`LoginUseCase`, `SetupAdminUseCase`, `TransactionStateMachine`) even though they don't move to `commonMain` until 2d, so that move is a pure file relocation later.
+- `CustomsApp.kt`: replaced Hilt bootstrap with `startKoin { androidContext(...); workManagerFactory(); modules(...) }`.
+- `SyncWorker.kt`: dropped `@HiltWorker`/`@AssistedInject`; now a plain `CoroutineWorker(context, params, syncRepository)` constructed via Koin's `worker { params -> SyncWorker(params.get(), params.get(), get()) }` DSL (`di/WorkModule.kt`).
+- All 12 `hiltViewModel()` call sites across 11 Composable files switched to `koinViewModel()`.
+
+**Bug found only by actually compiling (fixed):** `KoinApplication.workManagerFactory()` (called inside `startKoin { }`) returns `Unit` — it only *registers* the WorkManager integration in the Koin graph, it does not return a usable `WorkerFactory`. The actual `WorkerFactory` to hand to `Configuration.Builder().setWorkerFactory(...)` is `org.koin.androidx.workmanager.factory.KoinWorkerFactory()`, a plain class with a no-arg constructor (it resolves the global Koin instance lazily at worker-creation time via `KoinComponent`, so it's safe to instantiate before `startKoin` runs). Found by decompiling the actual Koin 4.0.0 artifact with `javap` after the first compile attempt failed with a type mismatch — matches Phase 1's lesson that library API assumptions need checking against the real thing, not memory.
+
+**Verified:** `.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest` green on Windows. No emulator/device was available in this session to manually click through login/dashboard/sync, so that manual pass is still outstanding — do it before starting 2b if possible.
+
+### Phase 2b — Ktor migration (not started)
+
 - Replace **Retrofit + OkHttp** with **Ktor client** (OkHttp engine on Android, Darwin engine on iOS) against the existing FastAPI REST contract in `backend/` (plain JSON/REST, no Android-specific transport assumptions — confirmed in Phase 1 research).
-- **Do the UUID→String migration** across `domain/model/*.kt`, `domain/repository/*.kt`, and the ~34 dependent files (Room entities/converters, DTOs, ViewModels, UI) in the same pass, since it's the same "make domain fully commonMain-portable" motivation as the Hilt removal.
-- Once done, move the rest of `domain/` (models, repositories, usecases) to `commonMain`.
+- Reimplement `ServerUrlInterceptor`'s runtime-editable-URL behavior as a Ktor plugin.
+
+### Phase 2c — UUID→String migration (not started)
+
+- Do the UUID→String migration across `domain/model/*.kt`, `domain/repository/*.kt`, and the ~34 dependent files (Room entities/converters, DTOs, ViewModels, UI).
+
+### Phase 2d — Move domain/ to commonMain (not started)
+
+- Once 2b/2c are done, move the rest of `domain/` (models, repositories, usecases minus `PasswordHasher`, statemachine) to `commonMain`. This is the only sub-step needing iOS CI to verify.
 
 ## Phase 3 — Persistence (not started)
 
