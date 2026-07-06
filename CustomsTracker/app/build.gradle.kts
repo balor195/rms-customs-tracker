@@ -47,9 +47,10 @@ kotlin {
             implementation(libs.coroutines.core)
             implementation(libs.kotlinx.datetime)
 
-            // Room
+            // Room — room-ktx is deliberately not included: it's Android-only (pulls in
+            // kotlinx-coroutines-android transitively, which has no iOS variant) and unused —
+            // Room's own Flow support in room-runtime already covers every DAO in this project.
             implementation(libs.room.runtime)
-            implementation(libs.room.ktx)
             implementation(libs.sqlite.bundled)
 
             // Persistence

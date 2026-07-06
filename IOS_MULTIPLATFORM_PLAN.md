@@ -130,6 +130,8 @@ Split into two sub-steps (3a, 3b), same bisectable-commit pattern as Phase 2.
 
 **De-risking note that worked as intended:** the Migration-signature rewrite (the single highest-uncertainty item going in) was fully caught by a local `:app:compileDebugKotlinAndroid` — no iOS CI cycle needed to validate it. Only the per-target KSP wiring and iOS-specific builder needed the actual CI round-trip.
 
+**Bug the CI round-trip caught (exactly the kind of thing it's for):** the first push failed at `kspKotlinIosSimulatorArm64` with "No matching variant of `kotlinx-coroutines-android`" — `room-ktx` had been carried over into `commonMain` alongside `room-runtime` on the assumption both belonged together, but `room-ktx` is Android-only (pulls in `kotlinx-coroutines-android` transitively, which has no iOS variant) and, on inspection, wasn't actually used anywhere in the codebase — Room's own Flow support in `room-runtime` already covers every DAO here. Removed `room-ktx` entirely rather than relocating it. This is a case the local Android-only compile couldn't have caught, since `kotlinx-coroutines-android` resolves fine on the Android target — only the iOS KSP task's dependency resolution exposed it.
+
 **Verified:** `.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest` green, plus `:app:compileDebugAndroidTestKotlinAndroid` green (instrumented tests still can't run without an emulator, but now they at least compile).
 
 ### Phase 3b — DataStore-multiplatform swap ✅ Done — 2026-07-06
