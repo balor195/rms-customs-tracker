@@ -1,10 +1,12 @@
 import java.util.Properties
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
 }
@@ -15,6 +17,97 @@ val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties().apply {
     if (keystorePropertiesFile.exists()) {
         keystorePropertiesFile.inputStream().use { load(it) }
+    }
+}
+
+kotlin {
+    androidTarget {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+    }
+
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "shared"
+            isStatic = true
+        }
+    }
+
+    sourceSets {
+        commonMain.dependencies {
+            implementation(compose.runtime)
+            implementation(compose.foundation)
+            implementation(compose.material3)
+            implementation(compose.ui)
+            implementation(compose.components.resources)
+            implementation(libs.coroutines.core)
+        }
+
+        androidMain.dependencies {
+            // Core AndroidX
+            implementation(libs.core.ktx)
+            implementation(libs.lifecycle.runtime.ktx)
+            implementation(libs.lifecycle.viewmodel.compose)
+            implementation(libs.activity.compose)
+            implementation(libs.coroutines.android)
+            implementation(libs.datastore)
+
+            // Compose UI (Android-specific interop/tooling)
+            implementation(libs.compose.ui.tooling.preview)
+            implementation(libs.compose.material.icons.ext)
+            implementation(libs.compose.ui.text.google.fonts)
+            implementation(libs.navigation.compose)
+
+            // Room
+            implementation(libs.room.runtime)
+            implementation(libs.room.ktx)
+
+            // Hilt
+            implementation(libs.hilt.android)
+            implementation(libs.hilt.navigation.compose)
+            implementation(libs.hilt.work)
+
+            // Network (ready for Phase 9)
+            implementation(libs.retrofit)
+            implementation(libs.retrofit.kotlinx.serialization)
+            implementation(libs.okhttp)
+            implementation(libs.okhttp.logging)
+            implementation(libs.kotlinx.serialization.json)
+
+            // Auth / Security
+            implementation(libs.security.crypto)
+            implementation(libs.lifecycle.runtime.compose)
+
+            // WorkManager (SLA alerts Phase 6 + sync Phase 9)
+            implementation(libs.workmanager)
+
+            // CameraX (Phase 5)
+            implementation(libs.camerax.core)
+            implementation(libs.camerax.camera2)
+            implementation(libs.camerax.lifecycle)
+            implementation(libs.camerax.view)
+        }
+
+        androidUnitTest.dependencies {
+            implementation(libs.junit)
+            implementation(libs.coroutines.test)
+        }
+
+        getByName("androidInstrumentedTest").dependencies {
+            implementation(libs.androidx.test.ext)
+            implementation(libs.room.testing)
+            implementation(libs.coroutines.test)
+            implementation(libs.androidx.test.runner)
+            implementation(libs.hilt.android.testing)
+        }
+
+        iosMain.dependencies {
+        }
     }
 }
 
@@ -61,77 +154,20 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
     }
 }
 
 dependencies {
-    val composeBom = platform(libs.compose.bom)
-    implementation(composeBom)
-
-    // Core AndroidX
-    implementation(libs.core.ktx)
-    implementation(libs.lifecycle.runtime.ktx)
-    implementation(libs.lifecycle.viewmodel.compose)
-    implementation(libs.activity.compose)
-    implementation(libs.coroutines.android)
-    implementation(libs.datastore)
-
-    // Compose UI
-    implementation(libs.compose.ui)
-    implementation(libs.compose.ui.tooling.preview)
-    implementation(libs.compose.material3)
-    implementation(libs.compose.material.icons.ext)
-    implementation(libs.compose.ui.text.google.fonts)
-    implementation(libs.navigation.compose)
-
-    // Room
-    implementation(libs.room.runtime)
-    implementation(libs.room.ktx)
-    ksp(libs.room.compiler)
-
-    // Hilt
-    implementation(libs.hilt.android)
-    ksp(libs.hilt.compiler)
-    implementation(libs.hilt.navigation.compose)
-    implementation(libs.hilt.work)
-    ksp(libs.hilt.work.compiler)
-
-    // Network (ready for Phase 9)
-    implementation(libs.retrofit)
-    implementation(libs.retrofit.kotlinx.serialization)
-    implementation(libs.okhttp)
-    implementation(libs.okhttp.logging)
-    implementation(libs.kotlinx.serialization.json)
-
-    // Auth / Security
-    implementation(libs.security.crypto)
-    implementation(libs.lifecycle.runtime.compose)
-
-    // WorkManager (SLA alerts Phase 6 + sync Phase 9)
-    implementation(libs.workmanager)
-
-    // CameraX (Phase 5)
-    implementation(libs.camerax.core)
-    implementation(libs.camerax.camera2)
-    implementation(libs.camerax.lifecycle)
-    implementation(libs.camerax.view)
+    add("androidMainImplementation", platform(libs.compose.bom))
 
     // Debug
-    debugImplementation(libs.compose.ui.tooling)
+    add("debugImplementation", libs.compose.ui.tooling)
 
-    // Tests
-    testImplementation(libs.junit)
-    testImplementation(libs.coroutines.test)
-    androidTestImplementation(libs.androidx.test.ext)
-    androidTestImplementation(libs.room.testing)
-    androidTestImplementation(libs.coroutines.test)
-    androidTestImplementation(libs.androidx.test.runner)
-    androidTestImplementation(libs.hilt.android.testing)
-    kspAndroidTest(libs.hilt.compiler)
+    // KSP (Android-only annotation processing)
+    add("kspAndroid", libs.room.compiler)
+    add("kspAndroid", libs.hilt.compiler)
+    add("kspAndroid", libs.hilt.work.compiler)
+    add("kspAndroidTest", libs.hilt.compiler)
 }

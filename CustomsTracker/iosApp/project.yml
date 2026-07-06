@@ -1,0 +1,36 @@
+name: iosApp
+options:
+  bundleIdPrefix: com.rms.customs
+  deploymentTarget:
+    iOS: "15.0"
+targets:
+  iosApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: iosApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rms.customs.ios
+        PRODUCT_NAME: "RMS Customs Tracker"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "RMS Customs Tracker"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
+        ENABLE_PREVIEWS: YES
+        FRAMEWORK_SEARCH_PATHS: "$(SRCROOT)/../app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
+        OTHER_LDFLAGS: "$(inherited) -framework shared"
+    preBuildScripts:
+      - name: Compile Kotlin Framework (shared)
+        basedOnDependencyAnalysis: false
+        script: |
+          cd "$SRCROOT/.."
+          ./gradlew :app:embedAndSignAppleFrameworkForXcode
+        inputFiles: []
+        outputFiles: []
+    scheme:
+      testTargets: []
+      gatherCoverageData: false
