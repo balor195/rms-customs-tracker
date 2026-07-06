@@ -23,6 +23,7 @@
 | 9 | Backend API + Offline Sync | — |
 | 10 | Admin, Polish & Packaging | — |
 | 11 | Workflow, Roles & Field Overhaul | ✅ Done — see [dated entry](#workflow-roles--field-overhaul-2026-07-05) below |
+| 12 | iOS Support (Kotlin/Compose Multiplatform) | 🔵 In progress — Phase 1 of 6 done, see [dated entry](#ios-support-kotlin-compose-multiplatform-2026-07-06) below and `IOS_MULTIPLATFORM_PLAN.md` |
 
 ---
 
@@ -579,3 +580,20 @@ User confirmed the core workflow (#13/#14) now works correctly, but reported tha
 
 ### Verification
 - `.\gradlew assembleDebug testDebugUnitTest` — **BUILD SUCCESSFUL**, all unit tests passing.
+
+---
+
+## iOS Support (Kotlin/Compose Multiplatform) (2026-07-06)
+
+Full plan and phase-by-phase roadmap: **`IOS_MULTIPLATFORM_PLAN.md`** (project root). Summary here; details there.
+
+**Phase 1 of 6 done** — KMP skeleton, CI, and domain migration:
+- `CustomsTracker/app` converted to a Kotlin Multiplatform module (`androidTarget()` + `iosArm64()`/`iosSimulatorArm64()`/`iosX64()`), sources restructured into `commonMain`/`androidMain`/`iosMain` — no behavior change to the Android app.
+- `domain/model/enums/*` (10 files, no JVM-only deps) moved to `commonMain`. The rest of `domain/` stays in `androidMain` for now — it turned out to use `java.util.UUID` and `javax.inject.Inject` (Hilt), neither available on Kotlin/Native; moving it properly is deferred to Phase 2, bundled with the Hilt→Koin migration.
+- New `iosApp/` (XcodeGen-generated Xcode project + SwiftUI wrapper) renders a placeholder Compose Multiplatform screen.
+- New `.github/workflows/ios-build.yml` — since there's no local Mac, this GitHub Actions macOS workflow is the only way to build/verify iOS work: builds the shared Kotlin framework, builds the Xcode project, boots a simulator, installs and launches the app, uploads a screenshot.
+- Repo pushed to a new private GitHub repo (`github.com/balor195/rms-customs-tracker`) specifically so Actions could run.
+- Three real bugs found only by running the pipeline (all fixed): missing Unix `gradlew` (repo only had `gradlew.bat`), a hardcoded `iPhone 15` simulator name the current runner image doesn't ship, and a genuine Compose Multiplatform iOS crash-on-launch (missing `CADisableMinimumFrameDurationOnPhone` Info.plist key — `simctl launch` reports success even though the app subsequently crashed, so this only showed up by capturing console/crash logs, not from the screenshot or exit code).
+- Verified end-to-end: CI screenshot shows the actual Compose UI ("RMS Customs Tracker — iOS skeleton — Compose Multiplatform") rendering live on the iOS Simulator.
+
+**Remaining (Phases 2-6, not started):** Hilt→Koin + Retrofit→Ktor + UUID→String domain migration; Room→Room-KMP; expect/actual for secure storage, background sync, notifications, camera/document capture, PDF export, and password hashing; UI migration to `commonMain`; iOS polish & release. See `IOS_MULTIPLATFORM_PLAN.md` for the full breakdown — each phase needs its own plan/review before starting, the same way Phase 1 did.
