@@ -9,6 +9,10 @@ targets:
     platform: iOS
     sources:
       - path: iosApp
+    info:
+      path: Info.plist
+      properties:
+        CADisableMinimumFrameDurationOnPhone: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.rms.customs.ios
@@ -17,7 +21,6 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_CFBundleDisplayName: "RMS Customs Tracker"
-        INFOPLIST_KEY_CADisableMinimumFrameDurationOnPhone: YES
         TARGETED_DEVICE_FAMILY: "1,2"
         SWIFT_VERSION: "5.0"
         ENABLE_PREVIEWS: YES
