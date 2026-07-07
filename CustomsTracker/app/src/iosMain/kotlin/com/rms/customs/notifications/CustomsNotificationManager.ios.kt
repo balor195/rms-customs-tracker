@@ -7,8 +7,7 @@ import platform.UserNotifications.UNAuthorizationOptionAlert
 import platform.UserNotifications.UNAuthorizationOptionBadge
 import platform.UserNotifications.UNAuthorizationOptionSound
 import platform.UserNotifications.UNMutableNotificationContent
-import platform.UserNotifications.UNNotificationInterruptionLevelActive
-import platform.UserNotifications.UNNotificationInterruptionLevelTimeSensitive
+import platform.UserNotifications.UNNotificationInterruptionLevel
 import platform.UserNotifications.UNNotificationRequest
 import platform.UserNotifications.UNUserNotificationCenter
 
@@ -56,10 +55,19 @@ actual class CustomsNotificationManager actual constructor(context: PlatformCont
             setBody(messageAr)
             setUserInfo(mapOf("transaction_id" to transactionId))
             setInterruptionLevel(
-                if (timeSensitive) UNNotificationInterruptionLevelTimeSensitive else UNNotificationInterruptionLevelActive
+                if (timeSensitive) {
+                    UNNotificationInterruptionLevel.UNNotificationInterruptionLevelTimeSensitive
+                } else {
+                    UNNotificationInterruptionLevel.UNNotificationInterruptionLevelActive
+                }
             )
         }
-        val request = UNNotificationRequest(
+        // UNNotificationRequest only exposes UNNotificationRequest() and (coder: NSCoder) as Kotlin
+        // constructors - confirmed directly from a compiler error listing both. The
+        // identifier:content:trigger: initializer is an ObjC class factory method
+        // (+requestWithIdentifier:content:trigger:), not a designated initializer, so it binds as a
+        // companion function instead.
+        val request = UNNotificationRequest.requestWithIdentifier(
             identifier = stableId.toString(),
             content = content,
             trigger = null,
