@@ -1,22 +1,26 @@
 package com.rms.customs.data.local
 
-import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+
+// Not a typealias to android.content.Context directly: Context is abstract, which conflicts
+// with the expect class's implicit final modality. A thin wrapper sidesteps that entirely.
+actual class PlatformContext(val context: android.content.Context)
 
 private const val SESSION_FILE   = "customs_session"
 private const val KEY_USER_ID    = "user_id"
 private const val KEY_LOGIN_TIME = "login_time"
 private const val SESSION_TTL_MS = 8L * 3600 * 1000   // 8 hours
 
-class SessionStore(context: Context) {
+actual class SessionStore actual constructor(context: PlatformContext) {
+    private val androidContext = context.context
 
     private val prefs by lazy {
-        val masterKey = MasterKey.Builder(context)
+        val masterKey = MasterKey.Builder(androidContext)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
         EncryptedSharedPreferences.create(
-            context,
+            androidContext,
             SESSION_FILE,
             masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
@@ -24,15 +28,14 @@ class SessionStore(context: Context) {
         )
     }
 
-    fun save(userId: String) {
+    actual fun save(userId: String) {
         prefs.edit()
             .putString(KEY_USER_ID, userId)
             .putLong(KEY_LOGIN_TIME, System.currentTimeMillis())
             .apply()
     }
 
-    /** Returns (userId, loginTime) if a valid non-expired session exists, null otherwise. */
-    fun load(): Pair<String, Long>? {
+    actual fun load(): Pair<String, Long>? {
         val idStr     = prefs.getString(KEY_USER_ID, null) ?: return null
         val loginTime = prefs.getLong(KEY_LOGIN_TIME, 0L)
         if (System.currentTimeMillis() - loginTime > SESSION_TTL_MS) {
@@ -42,7 +45,7 @@ class SessionStore(context: Context) {
         return Pair(idStr, loginTime)
     }
 
-    fun clear() {
+    actual fun clear() {
         prefs.edit().clear().apply()
     }
 }
