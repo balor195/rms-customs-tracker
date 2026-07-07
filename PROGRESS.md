@@ -23,7 +23,7 @@
 | 9 | Backend API + Offline Sync | — |
 | 10 | Admin, Polish & Packaging | — |
 | 11 | Workflow, Roles & Field Overhaul | ✅ Done — see [dated entry](#workflow-roles--field-overhaul-2026-07-05) below |
-| 12 | iOS Support (Kotlin/Compose Multiplatform) | 🔵 In progress — Phase 4c of 6 done, see [dated entry](#ios-support-kotlin-compose-multiplatform-2026-07-06) below and `IOS_MULTIPLATFORM_PLAN.md` |
+| 12 | iOS Support (Kotlin/Compose Multiplatform) | 🔵 In progress — Phase 4d of 6 done, see [dated entry](#ios-support-kotlin-compose-multiplatform-2026-07-06) below and `IOS_MULTIPLATFORM_PLAN.md` |
 
 ---
 
@@ -614,6 +614,8 @@ Verified end-to-end on CI: built Info.plist has the key, console/crash logs are 
 
 **Phase 4c done, compile-verified (2026-07-07)** — background sync: `BackgroundSyncScheduler` moved to `commonMain`, reusing `PlatformContext`. Android actual relocates the existing `WorkManager` periodic-sync logic unchanged; iOS actual uses `platform.BackgroundTasks` (confirmed to be one of Kotlin/Native's own bundled libraries *before* writing code this time, applying Phase 4a's lesson directly). Explicitly scoped this phase's verification to **compilation only** up front — `BGTaskScheduler` needs real Info.plist entitlements a bare test binary can't have, the same gap 4b hit, so no point re-discovering it via more CI rounds. Four CI rounds nailed down the exact `NSDate`/`BGTaskScheduler` API shape (Kotlin/Native cinterop's exact method-naming and constructor quirks). Compiles clean; existing tests and app-launch flow unaffected.
 
-**Remaining (Phase 4d-4f, then Phases 5-6):** expect/actual for notifications, camera/document capture, PDF export; UI migration to `commonMain`; iOS polish & release. See `IOS_MULTIPLATFORM_PLAN.md` for the full breakdown.
+**Phase 4d done, compile-verified (2026-07-07)** — notifications: `CustomsNotificationManager` moved to `commonMain`, reusing `PlatformContext`. Android actual unchanged; iOS actual uses `platform.UserNotifications` (checked first, no custom cinterop, same practice as 4c) — `createChannels()` requests authorization (no channel concept on iOS), post methods build a `UNMutableNotificationContent`/`UNNotificationRequest` with escalated SLA notifications getting `.timeSensitive` interruption level. Same compile-only verification bar as 4c, set explicitly up front. Two CI rounds fixed two precise API-shape errors (`UNNotificationInterruptionLevel` is a nested enum, not top-level constants; `UNNotificationRequest`'s convenience initializer is a class factory function, not a constructor) — both matched uncertainties already flagged in the plan before writing code. Compiles clean; existing tests and app-launch flow unaffected.
+
+**Remaining (Phase 4e-4f, then Phases 5-6):** expect/actual for camera/document capture, PDF export; UI migration to `commonMain`; iOS polish & release. See `IOS_MULTIPLATFORM_PLAN.md` for the full breakdown.
 
 **Remaining (Phases 2-6, not started):** Hilt→Koin + Retrofit→Ktor + UUID→String domain migration; Room→Room-KMP; expect/actual for secure storage, background sync, notifications, camera/document capture, PDF export, and password hashing; UI migration to `commonMain`; iOS polish & release. See `IOS_MULTIPLATFORM_PLAN.md` for the full breakdown — each phase needs its own plan/review before starting, the same way Phase 1 did.
