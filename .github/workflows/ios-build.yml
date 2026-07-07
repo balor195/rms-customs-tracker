@@ -36,6 +36,10 @@ jobs:
         working-directory: CustomsTracker
         run: chmod +x gradlew
 
+      - name: Run shared Kotlin/Native tests on iOS Simulator (Phase 4a)
+        working-directory: CustomsTracker
+        run: ./gradlew :app:iosSimulatorArm64Test
+
       - name: Pick an available iOS simulator
         id: sim
         run: |
@@ -90,3 +94,13 @@ jobs:
           path: |
             CustomsTracker/iosApp/screenshots/launch.png
             CustomsTracker/iosApp/logs/
+
+      - name: Upload iOS Simulator test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator-test-report
+          path: |
+            CustomsTracker/app/build/test-results/iosSimulatorArm64Test/
+            CustomsTracker/app/build/reports/tests/iosSimulatorArm64Test/
+          if-no-files-found: ignore

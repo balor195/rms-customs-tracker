@@ -5,22 +5,20 @@ import java.util.Base64
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
-// android-only until Phase 4 expect/actual crypto — only consumed by UserRepositoryImpl,
-// which itself stays androidMain until Room-KMP (Phase 3), so this doesn't block that move.
-object PasswordHasher {
+actual object PasswordHasher {
     private const val ALGORITHM  = "PBKDF2WithHmacSHA256"
     private const val ITERATIONS = 100_000
     private const val KEY_BITS   = 256
     private const val SALT_BYTES = 16
 
-    fun hash(password: String): String {
+    actual fun hash(password: String): String {
         val salt = ByteArray(SALT_BYTES).also { SecureRandom().nextBytes(it) }
         val hash = derive(password, salt)
         val enc = Base64.getEncoder()
         return "${enc.encodeToString(salt)}:${enc.encodeToString(hash)}"
     }
 
-    fun verify(password: String, stored: String): Boolean {
+    actual fun verify(password: String, stored: String): Boolean {
         val parts = stored.split(":")
         if (parts.size != 2) return false
         val dec  = Base64.getDecoder()

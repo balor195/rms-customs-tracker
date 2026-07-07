@@ -24,7 +24,7 @@ This is a large migration overall (Hilt→Koin, Retrofit→Ktor, Room→Room-KMP
 | 1 | Skeleton, CI, domain migration | ✅ Done — 2026-07-06 |
 | 2 | DI & networking (Hilt→Koin, Retrofit→Ktor) | ✅ Done — 2026-07-06 |
 | 3 | Persistence (Room→Room-KMP, DataStore) | ✅ Done — verified on iOS CI, 2026-07-07 |
-| 4 | Platform abstractions (expect/actual) | ⬜ Not started |
+| 4 | Platform abstractions (expect/actual) | 🔶 In progress — see sub-phase table below |
 | 5 | UI migration to commonMain | ⬜ Not started |
 | 6 | iOS polish & release | ⬜ Not started |
 
@@ -162,15 +162,20 @@ Neither of these two bugs was catchable from the local Android-only compile — 
 
 **Minor unresolved observation, not a Phase 3 blocker:** this run's screenshot renders the placeholder text at unusually low contrast (very light gray/white on white) compared to earlier runs' clearly-legible dark-on-lavender rendering. `App.kt` has no animation or conditional coloring that would explain this, and the CI picked a different simulator model this run (iPhone 16 Pro vs. iPhone 17 Pro previously) — most likely a simulator-level display/appearance default (e.g. Dark Mode resolution, True Tone) rather than an app bug, but unconfirmed. Worth a look before Phase 5 (UI migration) if it recurs, since that phase will actually depend on this rendering correctly.
 
-## Phase 4 — Platform abstractions via expect/actual (not started)
+## Phase 4 — Platform abstractions via expect/actual (in progress)
 
-Each of these needs an Android impl (already exists, just needs wrapping) + a new iOS impl:
-- **`SecureStorage`** — Android Keystore/`EncryptedSharedPreferences` (`SessionStore.kt`) vs. iOS Keychain.
-- **Background sync scheduling** — WorkManager (`SyncWorker.kt`) vs. iOS `BGTaskScheduler`.
-- **Notifications** — `NotificationManager` (`CustomsNotificationManager.kt`) vs. `UNUserNotificationCenter`.
-- **Document capture** — CameraX vs. `UIImagePickerController`/AVFoundation.
-- **PDF export** — `android.graphics.pdf.PdfDocument` (`PdfExporter.kt`) vs. an iOS-compatible renderer.
-- Also needs a **password hashing** abstraction: `PasswordHasher.kt` currently uses `javax.crypto`/`java.security` (JVM-only) — not covered by the Phase 1 scope note, but blocks login working on iOS.
+Six genuinely independent subsystems, each with a different risk profile — split into sequenced, independently-verifiable sub-phases (4a-4f) rather than attempted in one pass, matching Phase 2's (2a-2d) and Phase 3's (3a-3b) pattern:
+
+| Sub-phase | Subsystem | Status | Why this order |
+|---|---|---|---|
+| **4a** | Password hashing (`PasswordHasher.kt`: `javax.crypto`/`java.security`, JVM-only) | ⬜ | Smallest scope, no UI/DI coupling, hard blocker for login — do first |
+| 4b | Secure storage (`SessionStore.kt`: Android Keystore/`EncryptedSharedPreferences` → iOS Keychain) | ⬜ | Small, but needs a new cinterop pattern (`platform.Security`); do right after 4a while crypto/cinterop context is fresh |
+| 4c | Background sync scheduling (`SyncWorker.kt`: WorkManager → iOS `BGTaskScheduler`) | ⬜ | No UI dependency, but real design surface (Info.plist `BGTaskSchedulerPermittedIdentifiers`/`UIBackgroundModes`) — apply the Phase 3 `info.properties` lesson from the start instead of rediscovering it |
+| 4d | Notifications (`CustomsNotificationManager.kt`: `NotificationManager` → `UNUserNotificationCenter`) | ⬜ | Note: `postSlaNotification` is currently dead code (unused, likely reserved for the not-yet-built `SlaCheckerWorker` from the original 7-phase workflow plan) — port the API shape for parity but don't over-invest in testing an unused path |
+| 4e | Document capture — **not CameraX** (no CameraX usage exists despite the declared Gradle deps; the actual flow is the system camera app via `ActivityResultContracts.TakePicture()` + `FileProvider`, in `DocumentsTab.kt`) → iOS `UIImagePickerController` | ⬜ | Needs a UIViewController-presentation bridge from Kotlin — new pattern, moderate risk |
+| 4f | PDF export (`PdfExporter.kt`: `android.graphics.pdf.PdfDocument`/`Canvas`, 299 lines, 6 report types) → iOS `UIGraphicsPDFRenderer`/Core Text | ⬜ | Largest, highest-uncertainty (Arabic RTL text shaping via Core Text vs. Android's Canvas) — do last, after the smaller pieces have built up iOS-specific plumbing experience |
+
+Each sub-phase gets its own commit(s) and CI verification before starting the next.
 
 ## Phase 5 — UI migration to commonMain (not started)
 
