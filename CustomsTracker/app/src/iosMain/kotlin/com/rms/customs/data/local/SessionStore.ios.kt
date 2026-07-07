@@ -10,9 +10,11 @@ import kotlinx.cinterop.usePinned
 import kotlinx.cinterop.value
 import kotlinx.datetime.Clock
 import platform.CoreFoundation.CFDictionaryRef
+import platform.CoreFoundation.CFRelease
 import platform.CoreFoundation.CFStringRef
 import platform.CoreFoundation.CFTypeRefVar
 import platform.Foundation.CFBridgingRelease
+import platform.Foundation.CFBridgingRetain
 import platform.Foundation.NSData
 import platform.Foundation.NSMutableDictionary
 import platform.Foundation.NSString
@@ -39,14 +41,19 @@ private const val SESSION_TTL_MS = 8L * 3600 * 1000 // 8 hours, matches the Andr
 // single Keychain item, mirroring PasswordHasher's own "salt:hash" convention from Phase 4a.
 //
 // kSec* constants (kSecClass, kSecAttrService, ...) are raw CFStringRef pointers
-// (CPointer<__CFString>?). An unchecked `as NSString` cast on them compiles but throws a
-// ClassCastException at runtime ("class kotlinx.cinterop.CPointer cannot be cast to class
-// platform.Foundation.NSString") - CFStringRef/NSString are toll-free bridged at the OS level, but
-// Kotlin/Native's object model doesn't recognize that without an explicit bridge. CFBridgingRelease
-// performs the actual bridge to a real NSString instance. These constants are immortal process-wide
-// singletons, so the ownership-transfer semantics of "Release" don't matter in practice here.
+// (CPointer<__CFString>?), and NSMutableDictionary is Kotlin/Native's own NSDictionaryAsKMap
+// wrapper. Both directions of "the same bytes, different static Kotlin type" toll-free bridging
+// need an *explicit* bridge function call - a plain `as` cast compiles but throws a
+// ClassCastException at runtime, since Kotlin/Native's object model doesn't recognize CF/NS
+// equivalence without going through CFBridgingRelease (CF pointer -> NS object, used for the
+// immortal kSec* constants below - the ownership-transfer semantics of "Release" don't matter for
+// process-wide singletons) or CFBridgingRetain (NS object -> CF pointer, used for the
+// freshly-built query dictionaries, which we do own and must CFRelease after the Security call).
 @OptIn(ExperimentalForeignApi::class)
 private fun CFStringRef?.asNSString(): NSString = CFBridgingRelease(this) as NSString
+
+@OptIn(ExperimentalForeignApi::class)
+private fun NSMutableDictionary.asCFDictionary(): CFDictionaryRef = CFBridgingRetain(this) as CFDictionaryRef
 
 @OptIn(ExperimentalForeignApi::class)
 actual class SessionStore actual constructor(context: PlatformContext) {
@@ -56,16 +63,20 @@ actual class SessionStore actual constructor(context: PlatformContext) {
         val value = "$userId:${Clock.System.now().toEpochMilliseconds()}"
         val query = baseQuery()
         query.setObject(value.toNSData(), forKey = kSecValueData.asNSString())
-        SecItemAdd(query as CFDictionaryRef, null)
+        val cfQuery = query.asCFDictionary()
+        SecItemAdd(cfQuery, null)
+        CFRelease(cfQuery)
     }
 
     actual fun load(): Pair<String, Long>? {
         val query = baseQuery()
         query.setObject(true, forKey = kSecReturnData.asNSString())
         query.setObject(kSecMatchLimitOne.asNSString(), forKey = kSecMatchLimit.asNSString())
+        val cfQuery = query.asCFDictionary()
         val data = memScoped {
             val result = alloc<CFTypeRefVar>()
-            val status = SecItemCopyMatching(query as CFDictionaryRef, result.ptr)
+            val status = SecItemCopyMatching(cfQuery, result.ptr)
+            CFRelease(cfQuery)
             if (status != errSecSuccess) return null
             result.value as? NSData
         } ?: return null
@@ -85,7 +96,9 @@ actual class SessionStore actual constructor(context: PlatformContext) {
     }
 
     private fun deleteItem() {
-        SecItemDelete(baseQuery() as CFDictionaryRef)
+        val cfQuery = baseQuery().asCFDictionary()
+        SecItemDelete(cfQuery)
+        CFRelease(cfQuery)
     }
 
     private fun baseQuery(): NSMutableDictionary {
