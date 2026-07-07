@@ -15,7 +15,7 @@ import org.koin.dsl.module
 val coreModule = module {
     single { SessionStore(PlatformContext(androidContext())) }
     single { BackgroundSyncScheduler(PlatformContext(androidContext()), get()) }
-    single { CustomsNotificationManager(androidContext()) }
+    single { CustomsNotificationManager(PlatformContext(androidContext())) }
     single { CsvExporter(androidContext()) }
     single { PdfExporter(androidContext()) }
     single { TransactionStateMachine() }

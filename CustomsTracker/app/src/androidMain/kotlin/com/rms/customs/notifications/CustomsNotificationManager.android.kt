@@ -3,16 +3,16 @@ package com.rms.customs.notifications
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
 import com.rms.customs.MainActivity
+import com.rms.customs.data.local.PlatformContext
 import com.rms.customs.domain.model.AppNotification
 import com.rms.customs.domain.model.enums.NotificationType
 
-class CustomsNotificationManager(
-    private val context: Context,
-) {
+actual class CustomsNotificationManager actual constructor(context: PlatformContext) {
+    private val androidContext = context.context
+
     companion object {
         const val CHANNEL_SLA_BREACH        = "customs_sla_breach"
         const val CHANNEL_SLA_ESCALATED     = "customs_sla_escalated"
@@ -20,10 +20,10 @@ class CustomsNotificationManager(
     }
 
     private val notifManager: NotificationManager by lazy {
-        context.getSystemService(NotificationManager::class.java)
+        androidContext.getSystemService(NotificationManager::class.java)
     }
 
-    fun createChannels() {
+    actual fun createChannels() {
         notifManager.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_SLA_BREACH,
@@ -47,13 +47,13 @@ class CustomsNotificationManager(
         )
     }
 
-    fun postSlaNotification(notification: AppNotification, stableId: Int) {
-        val intent = Intent(context, MainActivity::class.java).apply {
+    actual fun postSlaNotification(notification: AppNotification, stableId: Int) {
+        val intent = Intent(androidContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("transaction_id", notification.transactionId.toString())
         }
         val pendingIntent = PendingIntent.getActivity(
-            context,
+            androidContext,
             stableId,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
@@ -63,7 +63,7 @@ class CustomsNotificationManager(
         val channel  = if (isEscalated) CHANNEL_SLA_ESCALATED else CHANNEL_SLA_BREACH
         val priority = if (isEscalated) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT
 
-        val built = NotificationCompat.Builder(context, channel)
+        val built = NotificationCompat.Builder(androidContext, channel)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentTitle(notification.titleAr)
             .setContentText(notification.messageAr)
@@ -76,19 +76,19 @@ class CustomsNotificationManager(
         notifManager.notify(stableId, built)
     }
 
-    fun postTransactionClosedNotification(notification: AppNotification, stableId: Int) {
-        val intent = Intent(context, MainActivity::class.java).apply {
+    actual fun postTransactionClosedNotification(notification: AppNotification, stableId: Int) {
+        val intent = Intent(androidContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("transaction_id", notification.transactionId.toString())
         }
         val pendingIntent = PendingIntent.getActivity(
-            context,
+            androidContext,
             stableId,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val built = NotificationCompat.Builder(context, CHANNEL_TRANSACTION_CLOSED)
+        val built = NotificationCompat.Builder(androidContext, CHANNEL_TRANSACTION_CLOSED)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(notification.titleAr)
             .setContentText(notification.messageAr)
