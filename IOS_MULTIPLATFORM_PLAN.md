@@ -23,7 +23,7 @@ This is a large migration overall (Hilt→Koin, Retrofit→Ktor, Room→Room-KMP
 |-------|-------------|--------|
 | 1 | Skeleton, CI, domain migration | ✅ Done — 2026-07-06 |
 | 2 | DI & networking (Hilt→Koin, Retrofit→Ktor) | ✅ Done — 2026-07-06 |
-| 3 | Persistence (Room→Room-KMP, DataStore) | 🔶 In progress — 3a, 3b done pending iOS CI, 2026-07-06 |
+| 3 | Persistence (Room→Room-KMP, DataStore) | ✅ Done — verified on iOS CI, 2026-07-07 |
 | 4 | Platform abstractions (expect/actual) | ⬜ Not started |
 | 5 | UI migration to commonMain | ⬜ Not started |
 | 6 | iOS polish & release | ⬜ Not started |
@@ -149,6 +149,18 @@ Neither of these two bugs was catchable from the local Android-only compile — 
 - `SessionStore.kt` stays on `EncryptedSharedPreferences` as planned — DataStore has no encrypted-storage equivalent; it moves to Phase 4's `SecureStorage` abstraction instead.
 
 **Verified:** `.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :app:compileDebugAndroidTestKotlinAndroid` all green.
+
+### Phase 3 iOS CI verification — three more real bugs found only by running the pipeline (all fixed, 2026-07-07)
+
+3a/3b compiled and passed locally, but the first iOS CI push after them still failed — a reminder that "compiles on Android" says nothing about Kotlin/Native. Three separate, unrelated bugs surfaced in sequence, each only visible from an actual CI run:
+
+1. **`androidx.sqlite` klib ABI mismatch.** `sqlite-bundled` was pinned to `2.7.0` (the latest stable release), but that artifact was compiled with a Kotlin compiler producing klib ABI `2.3.0` — newer than this project's Kotlin 2.2.20 (ceiling `2.2.0`) can consume. Checked Room 2.8.4's own published Gradle module metadata (`room-runtime-iossimulatorarm64-2.8.4.module`) rather than guessing: it declares `androidx.sqlite` **2.6.2** as its tested transitive dependency, so pinned to that instead of the newer, incompatible 2.7.0. Fixed in `gradle/libs.versions.toml`.
+2. **Missing `@OptIn(ExperimentalForeignApi::class)`.** With the klib error gone, the build got past dependency resolution and into actual source compilation for the first time — immediately surfacing that `DatabaseBuilder.kt`'s use of `NSFileManager.URLForDirectory` (a cinterop Foundation API) needed the opt-in annotation. A one-line fix invisible until the build reached this file.
+3. **`CADisableMinimumFrameDurationOnPhone` silently dropped from the compiled `Info.plist`, reviving the exact Phase 1 crash.** With both build errors fixed, CI reported "success" — but per Phase 1's own lesson, that doesn't mean the app didn't crash. Checking `logs/launch-console.log` (not just the screenshot) showed the identical `PlistSanityCheck` `IllegalStateException` from Phase 1, even though `iosApp/project.yml` still had `INFOPLIST_KEY_CADisableMinimumFrameDurationOnPhone: YES` set, unchanged since that original fix. Added a CI diagnostic step (`plutil -p` on the actual built `Info.plist`) rather than guessing, which proved the key was completely absent — while sibling `INFOPLIST_KEY_*` settings for Apple-standard keys (`CFBundleDisplayName`, the `UILaunchScreen`/`UIApplicationSceneManifest` `_Generation` flags) came through correctly. Root cause: Xcode's `GENERATE_INFOPLIST_FILE` → `INFOPLIST_KEY_*` synthesis only reliably picks up keys Xcode's build system recognizes as standard Info.plist keys; this key is a private one meaningful only to Compose Multiplatform's runtime check, not an Apple API, so it was silently discarded rather than erroring. **Fix:** switched to XcodeGen's `info.path`/`info.properties` block in `project.yml`, which writes a literal Info.plist file with this key baked in directly, bypassing Xcode's key-recognition filtering — `GENERATE_INFOPLIST_FILE` still merges its auto-synthesized keys into that file, so nothing else regressed (confirmed via the same plist dump).
+
+**Verified end-to-end on iOS CI (run [28865580240](https://github.com/balor195/rms-customs-tracker/actions/runs/28865580240)):** built `Info.plist` contains `CADisableMinimumFrameDurationOnPhone => 1` alongside all previously-working keys; `launch-console.log`, `device-process.log`, and the crash-reports directory are all clean (zero exceptions, zero crash reports); launch screenshot shows the placeholder UI's text and layout correctly in place. This confirms the Room-KMP + DataStore persistence layer from 3a/3b actually compiles and runs on Kotlin/Native/iOS, not just Android — Phase 3's real goal.
+
+**Minor unresolved observation, not a Phase 3 blocker:** this run's screenshot renders the placeholder text at unusually low contrast (very light gray/white on white) compared to earlier runs' clearly-legible dark-on-lavender rendering. `App.kt` has no animation or conditional coloring that would explain this, and the CI picked a different simulator model this run (iPhone 16 Pro vs. iPhone 17 Pro previously) — most likely a simulator-level display/appearance default (e.g. Dark Mode resolution, True Tone) rather than an app bug, but unconfirmed. Worth a look before Phase 5 (UI migration) if it recurs, since that phase will actually depend on this rendering correctly.
 
 ## Phase 4 — Platform abstractions via expect/actual (not started)
 

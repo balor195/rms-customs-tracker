@@ -23,7 +23,7 @@
 | 9 | Backend API + Offline Sync | — |
 | 10 | Admin, Polish & Packaging | — |
 | 11 | Workflow, Roles & Field Overhaul | ✅ Done — see [dated entry](#workflow-roles--field-overhaul-2026-07-05) below |
-| 12 | iOS Support (Kotlin/Compose Multiplatform) | 🔵 In progress — Phase 1 of 6 done, see [dated entry](#ios-support-kotlin-compose-multiplatform-2026-07-06) below and `IOS_MULTIPLATFORM_PLAN.md` |
+| 12 | iOS Support (Kotlin/Compose Multiplatform) | 🔵 In progress — Phase 3 of 6 done, see [dated entry](#ios-support-kotlin-compose-multiplatform-2026-07-06) below and `IOS_MULTIPLATFORM_PLAN.md` |
 
 ---
 
@@ -596,5 +596,16 @@ Full plan and phase-by-phase roadmap: **`IOS_MULTIPLATFORM_PLAN.md`** (project r
 - Repo pushed to a new private GitHub repo (`github.com/balor195/rms-customs-tracker`) specifically so Actions could run.
 - Three real bugs found only by running the pipeline (all fixed): missing Unix `gradlew` (repo only had `gradlew.bat`), a hardcoded `iPhone 15` simulator name the current runner image doesn't ship, and a genuine Compose Multiplatform iOS crash-on-launch (missing `CADisableMinimumFrameDurationOnPhone` Info.plist key — `simctl launch` reports success even though the app subsequently crashed, so this only showed up by capturing console/crash logs, not from the screenshot or exit code).
 - Verified end-to-end: CI screenshot shows the actual Compose UI ("RMS Customs Tracker — iOS skeleton — Compose Multiplatform") rendering live on the iOS Simulator.
+
+**Phase 2 of 6 done (2026-07-06)** — DI & networking: Hilt→Koin, Retrofit→Ktor, UUID→String across the domain layer, and the rest of `domain/` moved to `commonMain`. Full detail in `IOS_MULTIPLATFORM_PLAN.md`.
+
+**Phase 3 of 6 done (2026-07-07)** — Persistence: Room 2.6.1→2.8.4 (Room-KMP), DataStore-multiplatform swap for `ServerUrlHolder`/`SyncRepositoryImpl`. 3a/3b compiled and tested green locally, but the first iOS CI push afterward still failed — three more real, unrelated bugs found only by running the actual pipeline (all fixed):
+1. `androidx.sqlite` pinned to `2.7.0` had a klib ABI (`2.3.0`) newer than this project's Kotlin 2.2.20 can consume — pinned down to `2.6.2`, the version Room 2.8.4's own published module metadata declares as its tested dependency.
+2. `DatabaseBuilder.kt`'s iOS `NSFileManager.URLForDirectory` call needed `@OptIn(ExperimentalForeignApi::class)` — only surfaced once the klib fix let the build reach actual source compilation.
+3. The exact Phase 1 `CADisableMinimumFrameDurationOnPhone` crash came back — CI reported "success" but `logs/launch-console.log` showed the same crash, even though the Info.plist setting was never touched. A `plutil` dump of the actual built Info.plist (added as a CI diagnostic) proved the key was silently absent, while sibling Apple-standard `INFOPLIST_KEY_*` settings worked fine — an Xcode limitation where `GENERATE_INFOPLIST_FILE` only reliably synthesizes recognized standard keys. Fixed by switching to XcodeGen's `info.properties`, which writes the key into a literal Info.plist file directly.
+
+Verified end-to-end on CI: built Info.plist has the key, console/crash logs are clean, screenshot shows the placeholder UI in place — confirming the persistence layer actually builds and runs on Kotlin/Native, not just Android. One minor unconfirmed observation: this run's screenshot text rendered at unusually low contrast (different simulator model than prior runs) — not a functional issue, flagged in `IOS_MULTIPLATFORM_PLAN.md` for a look before Phase 5.
+
+**Remaining (Phases 4-6, not started):** expect/actual for secure storage, background sync, notifications, camera/document capture, PDF export, and password hashing; UI migration to `commonMain`; iOS polish & release. See `IOS_MULTIPLATFORM_PLAN.md` for the full breakdown.
 
 **Remaining (Phases 2-6, not started):** Hilt→Koin + Retrofit→Ktor + UUID→String domain migration; Room→Room-KMP; expect/actual for secure storage, background sync, notifications, camera/document capture, PDF export, and password hashing; UI migration to `commonMain`; iOS polish & release. See `IOS_MULTIPLATFORM_PLAN.md` for the full breakdown — each phase needs its own plan/review before starting, the same way Phase 1 did.
