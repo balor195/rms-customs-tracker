@@ -15,6 +15,10 @@ import platform.Foundation.NSDate
 private const val SYNC_TASK_IDENTIFIER = "com.rms.customs.sync"
 private const val SYNC_INTERVAL_SECONDS = 15.0 * 60.0 // 15 minutes, matches the Android actual
 
+// NSDate's reference date (2001-01-01T00:00:00Z) minus the Unix epoch (1970-01-01T00:00:00Z),
+// in seconds - a fixed, well-known constant (Apple's own kCFAbsoluteTimeIntervalSince1970).
+private const val REFERENCE_DATE_TO_UNIX_EPOCH_SECONDS = 978307200.0
+
 // BGTaskScheduler.register() requires BGTaskSchedulerPermittedIdentifiers to be declared in the
 // app's real Info.plist to do anything useful - a bare Kotlin/Native test binary (run via
 // ./gradlew iosSimulatorArm64Test) has no Info.plist at all, the same class of gap that made Phase
@@ -56,12 +60,12 @@ actual class BackgroundSyncScheduler actual constructor(
 
     private fun submitRequest() {
         val request = BGAppRefreshTaskRequest(SYNC_TASK_IDENTIFIER)
-        // Uses NSDate's designated initializer (timeIntervalSince1970) rather than a convenience
-        // class/instance method - Kotlin/Native cinterop always maps ObjC -init... methods to a
-        // Kotlin constructor reliably; two different convenience-method name guesses
-        // (dateWithTimeIntervalSinceNow, dateByAddingTimeInterval) both failed to resolve.
-        val nowSeconds = Clock.System.now().toEpochMilliseconds() / 1000.0
-        request.earliestBeginDate = NSDate(timeIntervalSince1970 = nowSeconds + SYNC_INTERVAL_SECONDS)
+        // NSDate only has three constructors in this Kotlin/Native binding - confirmed directly
+        // from a compiler error listing all candidates - and timeIntervalSince1970 isn't one of
+        // them; only timeIntervalSinceReferenceDate (relative to 2001-01-01, not the Unix epoch).
+        val nowUnixSeconds = Clock.System.now().toEpochMilliseconds() / 1000.0
+        val referenceDateSeconds = nowUnixSeconds - REFERENCE_DATE_TO_UNIX_EPOCH_SECONDS + SYNC_INTERVAL_SECONDS
+        request.earliestBeginDate = NSDate(timeIntervalSinceReferenceDate = referenceDateSeconds)
         try {
             BGTaskScheduler.sharedScheduler.submitTaskRequest(request, null)
         } catch (_: Throwable) {
