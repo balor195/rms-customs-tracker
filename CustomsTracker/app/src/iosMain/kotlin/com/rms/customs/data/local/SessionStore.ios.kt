@@ -10,7 +10,9 @@ import kotlinx.cinterop.usePinned
 import kotlinx.cinterop.value
 import kotlinx.datetime.Clock
 import platform.CoreFoundation.CFDictionaryRef
+import platform.CoreFoundation.CFStringRef
 import platform.CoreFoundation.CFTypeRefVar
+import platform.Foundation.CFBridgingRelease
 import platform.Foundation.NSData
 import platform.Foundation.NSMutableDictionary
 import platform.Foundation.NSString
@@ -37,9 +39,15 @@ private const val SESSION_TTL_MS = 8L * 3600 * 1000 // 8 hours, matches the Andr
 // single Keychain item, mirroring PasswordHasher's own "salt:hash" convention from Phase 4a.
 //
 // kSec* constants (kSecClass, kSecAttrService, ...) are raw CFStringRef pointers
-// (CPointer<__CFString>?), not NSCopyingProtocol-conforming objects - NSMutableDictionary.setObject
-// needs an explicit `as NSString` cast on them (CFStringRef/NSString are toll-free bridged at
-// runtime, but Kotlin/Native doesn't apply that bridging implicitly).
+// (CPointer<__CFString>?). An unchecked `as NSString` cast on them compiles but throws a
+// ClassCastException at runtime ("class kotlinx.cinterop.CPointer cannot be cast to class
+// platform.Foundation.NSString") - CFStringRef/NSString are toll-free bridged at the OS level, but
+// Kotlin/Native's object model doesn't recognize that without an explicit bridge. CFBridgingRelease
+// performs the actual bridge to a real NSString instance. These constants are immortal process-wide
+// singletons, so the ownership-transfer semantics of "Release" don't matter in practice here.
+@OptIn(ExperimentalForeignApi::class)
+private fun CFStringRef?.asNSString(): NSString = CFBridgingRelease(this) as NSString
+
 @OptIn(ExperimentalForeignApi::class)
 actual class SessionStore actual constructor(context: PlatformContext) {
 
@@ -47,14 +55,14 @@ actual class SessionStore actual constructor(context: PlatformContext) {
         deleteItem()
         val value = "$userId:${Clock.System.now().toEpochMilliseconds()}"
         val query = baseQuery()
-        query.setObject(value.toNSData(), forKey = kSecValueData as NSString)
+        query.setObject(value.toNSData(), forKey = kSecValueData.asNSString())
         SecItemAdd(query as CFDictionaryRef, null)
     }
 
     actual fun load(): Pair<String, Long>? {
         val query = baseQuery()
-        query.setObject(true, forKey = kSecReturnData as NSString)
-        query.setObject(kSecMatchLimitOne as NSString, forKey = kSecMatchLimit as NSString)
+        query.setObject(true, forKey = kSecReturnData.asNSString())
+        query.setObject(kSecMatchLimitOne.asNSString(), forKey = kSecMatchLimit.asNSString())
         val data = memScoped {
             val result = alloc<CFTypeRefVar>()
             val status = SecItemCopyMatching(query as CFDictionaryRef, result.ptr)
@@ -82,9 +90,9 @@ actual class SessionStore actual constructor(context: PlatformContext) {
 
     private fun baseQuery(): NSMutableDictionary {
         val query = NSMutableDictionary()
-        query.setObject(kSecClassGenericPassword as NSString, forKey = kSecClass as NSString)
-        query.setObject(SESSION_SERVICE, forKey = kSecAttrService as NSString)
-        query.setObject(SESSION_ACCOUNT, forKey = kSecAttrAccount as NSString)
+        query.setObject(kSecClassGenericPassword.asNSString(), forKey = kSecClass.asNSString())
+        query.setObject(SESSION_SERVICE, forKey = kSecAttrService.asNSString())
+        query.setObject(SESSION_ACCOUNT, forKey = kSecAttrAccount.asNSString())
         return query
     }
 }
