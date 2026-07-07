@@ -6,6 +6,7 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import platform.BackgroundTasks.BGAppRefreshTaskRequest
 import platform.BackgroundTasks.BGTask
 import platform.BackgroundTasks.BGTaskScheduler
@@ -55,7 +56,12 @@ actual class BackgroundSyncScheduler actual constructor(
 
     private fun submitRequest() {
         val request = BGAppRefreshTaskRequest(SYNC_TASK_IDENTIFIER)
-        request.earliestBeginDate = NSDate().dateByAddingTimeInterval(SYNC_INTERVAL_SECONDS)
+        // Uses NSDate's designated initializer (timeIntervalSince1970) rather than a convenience
+        // class/instance method - Kotlin/Native cinterop always maps ObjC -init... methods to a
+        // Kotlin constructor reliably; two different convenience-method name guesses
+        // (dateWithTimeIntervalSinceNow, dateByAddingTimeInterval) both failed to resolve.
+        val nowSeconds = Clock.System.now().toEpochMilliseconds() / 1000.0
+        request.earliestBeginDate = NSDate(timeIntervalSince1970 = nowSeconds + SYNC_INTERVAL_SECONDS)
         try {
             BGTaskScheduler.sharedScheduler.submitTaskRequest(request, null)
         } catch (_: Throwable) {
