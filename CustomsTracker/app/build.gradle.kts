@@ -36,15 +36,6 @@ kotlin {
             baseName = "shared"
             isStatic = true
         }
-        // CommonCrypto has no Apple-published module map (unlike Foundation/Security), so PBKDF2
-        // (PasswordHasher.ios.kt) needs a hand-written cinterop def to bind CCKeyDerivationPBKDF.
-        iosTarget.compilations.getByName("main") {
-            cinterops {
-                create("commonCrypto") {
-                    defFile(project.file("src/nativeInterop/cinterop/commonCrypto.def"))
-                }
-            }
-        }
     }
 
     sourceSets {

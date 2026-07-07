@@ -1,3 +1,0 @@
-package = platform.CommonCrypto
-language = Objective-C
-headers = CommonCrypto/CommonKeyDerivation.h

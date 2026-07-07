@@ -3,25 +3,28 @@ package com.rms.customs.domain.usecase
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.convert
+import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.usePinned
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
+import platform.CoreCrypto.CCKeyDerivationPBKDF
+import platform.CoreCrypto.kCCPBKDF2
+import platform.CoreCrypto.kCCPRFHmacAlgSHA256
 import platform.Security.SecRandomCopyBytes
 import platform.Security.kSecRandomDefault
 
-// The CommonCrypto PBKDF2 call itself is pushed down into per-concrete-target actuals
-// (iosArm64Main/iosSimulatorArm64Main - see pbkdf2HmacSha256() below) rather than living here in
-// the shared iosMain: CommonCrypto has no Apple-published module map, so it needs a hand-written
-// cinterop def declared per target, and that per-target cinterop binding isn't visible from a
-// shared intermediate source set like iosMain without cinterop commonization actually completing
-// for every target sharing it - which didn't happen reliably for a single-target test invocation
-// (:app:iosSimulatorArm64Test only builds that one target's klib). Keeping everything else
-// (base64, salt generation via platform.Security - a pre-bound system framework, unlike
-// CommonCrypto - and parsing) here in one place, so only the ~15-line primitive is duplicated.
+// CommonCrypto ships as a Kotlin/Native *built-in* platform library (kotlin-native's own
+// platformLibs/src/platform/ios/CommonCrypto.def), no custom cinterop needed - like
+// platform.Foundation/platform.Security, it's usable directly from the shared iosMain. The
+// package is platform.CoreCrypto, not platform.CommonCrypto (a historical naming quirk in
+// Kotlin/Native's own binding) - confirmed against Kotlin's source after a hand-written custom
+// cinterop attempt (package = platform.CommonCrypto, headers = CommonCrypto/CommonKeyDerivation.h)
+// resolved the package but not its symbols, since a single-header include doesn't reliably expose
+// everything a proper `modules = CommonCrypto` Clang-module import does.
 @OptIn(ExperimentalForeignApi::class, ExperimentalEncodingApi::class)
 actual object PasswordHasher {
-    const val ITERATIONS: UInt = 100_000u
-    const val KEY_BYTES = 32 // 256 bits, matches the Android actual's KEY_BITS
+    private const val ITERATIONS: UInt = 100_000u
+    private const val KEY_BYTES = 32 // 256 bits, matches the Android actual's KEY_BITS
     private const val SALT_BYTES = 16
 
     actual fun hash(password: String): String {
@@ -43,8 +46,28 @@ actual object PasswordHasher {
     // PBKDF2 is a deterministic standard, so identical algorithm/iteration-count/salt/key-length
     // parameters produce byte-identical output on both platforms, keeping every existing stored
     // password hash valid.
-    private fun derive(password: String, salt: ByteArray): ByteArray =
-        pbkdf2HmacSha256(password.encodeToByteArray(), salt, ITERATIONS, KEY_BYTES)
+    private fun derive(password: String, salt: ByteArray): ByteArray {
+        val passwordBytes = password.encodeToByteArray()
+        val derivedKey = ByteArray(KEY_BYTES)
+        passwordBytes.usePinned { passwordPinned ->
+            salt.usePinned { saltPinned ->
+                derivedKey.usePinned { keyPinned ->
+                    CCKeyDerivationPBKDF(
+                        algorithm = kCCPBKDF2.convert(),
+                        password = passwordPinned.addressOf(0),
+                        passwordLen = passwordBytes.size.convert(),
+                        salt = saltPinned.addressOf(0).reinterpret(),
+                        saltLen = salt.size.convert(),
+                        prf = kCCPRFHmacAlgSHA256.convert(),
+                        rounds = ITERATIONS,
+                        derivedKey = keyPinned.addressOf(0).reinterpret(),
+                        derivedKeyLen = derivedKey.size.convert(),
+                    )
+                }
+            }
+        }
+        return derivedKey
+    }
 
     private fun fillSecureRandom(bytes: ByteArray) {
         bytes.usePinned { pinned ->
@@ -52,6 +75,3 @@ actual object PasswordHasher {
         }
     }
 }
-
-@OptIn(ExperimentalForeignApi::class)
-internal expect fun pbkdf2HmacSha256(password: ByteArray, salt: ByteArray, iterations: UInt, keyBytes: Int): ByteArray
