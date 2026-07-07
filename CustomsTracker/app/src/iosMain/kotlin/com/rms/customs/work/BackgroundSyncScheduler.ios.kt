@@ -2,6 +2,7 @@ package com.rms.customs.work
 
 import com.rms.customs.data.local.PlatformContext
 import com.rms.customs.domain.repository.SyncRepository
+import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -22,6 +23,7 @@ private const val SYNC_INTERVAL_SECONDS = 15.0 * 60.0 // 15 minutes, matches the
 //
 // BGTask requests are one-shot, not auto-repeating like Android's PeriodicWorkRequest, so a fresh
 // request is submitted every time a task starts, scheduling the next run before this one finishes.
+@OptIn(ExperimentalForeignApi::class)
 actual class BackgroundSyncScheduler actual constructor(
     context: PlatformContext,
     private val syncRepository: SyncRepository,
@@ -53,9 +55,9 @@ actual class BackgroundSyncScheduler actual constructor(
 
     private fun submitRequest() {
         val request = BGAppRefreshTaskRequest(SYNC_TASK_IDENTIFIER)
-        request.earliestBeginDate = NSDate.dateWithTimeIntervalSinceNow(SYNC_INTERVAL_SECONDS)
+        request.earliestBeginDate = NSDate().dateByAddingTimeInterval(SYNC_INTERVAL_SECONDS)
         try {
-            BGTaskScheduler.sharedScheduler.submitTaskRequest(request)
+            BGTaskScheduler.sharedScheduler.submitTaskRequest(request, null)
         } catch (_: Throwable) {
             // Submission can legitimately fail (e.g. too many pending requests) - not fatal.
         }
