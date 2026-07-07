@@ -13,6 +13,10 @@ targets:
       path: Info.plist
       properties:
         CADisableMinimumFrameDurationOnPhone: true
+        UIBackgroundModes:
+          - fetch
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.rms.customs.sync
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.rms.customs.ios
