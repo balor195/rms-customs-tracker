@@ -14,6 +14,7 @@ import platform.CoreFoundation.CFTypeRefVar
 import platform.Foundation.NSData
 import platform.Foundation.NSMutableDictionary
 import platform.Foundation.NSString
+import platform.Foundation.create
 import platform.Security.SecItemAdd
 import platform.Security.SecItemCopyMatching
 import platform.Security.SecItemDelete
