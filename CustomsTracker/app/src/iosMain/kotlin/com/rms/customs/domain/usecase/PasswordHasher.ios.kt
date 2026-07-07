@@ -47,23 +47,24 @@ actual object PasswordHasher {
     // parameters produce byte-identical output on both platforms, keeping every existing stored
     // password hash valid.
     private fun derive(password: String, salt: ByteArray): ByteArray {
-        val passwordBytes = password.encodeToByteArray()
+        // Kotlin/Native's bundled CommonCrypto binding declares `password` as a Kotlin String? (not
+        // a raw char* pointer) - it bridges the C `const char *` parameter automatically, unlike
+        // `salt`/`derivedKey` (uint8_t*), which still need pinned ByteArray pointers.
+        val passwordByteLength = password.encodeToByteArray().size
         val derivedKey = ByteArray(KEY_BYTES)
-        passwordBytes.usePinned { passwordPinned ->
-            salt.usePinned { saltPinned ->
-                derivedKey.usePinned { keyPinned ->
-                    CCKeyDerivationPBKDF(
-                        algorithm = kCCPBKDF2.convert(),
-                        password = passwordPinned.addressOf(0),
-                        passwordLen = passwordBytes.size.convert(),
-                        salt = saltPinned.addressOf(0).reinterpret(),
-                        saltLen = salt.size.convert(),
-                        prf = kCCPRFHmacAlgSHA256.convert(),
-                        rounds = ITERATIONS,
-                        derivedKey = keyPinned.addressOf(0).reinterpret(),
-                        derivedKeyLen = derivedKey.size.convert(),
-                    )
-                }
+        salt.usePinned { saltPinned ->
+            derivedKey.usePinned { keyPinned ->
+                CCKeyDerivationPBKDF(
+                    algorithm = kCCPBKDF2.convert(),
+                    password = password,
+                    passwordLen = passwordByteLength.convert(),
+                    salt = saltPinned.addressOf(0).reinterpret(),
+                    saltLen = salt.size.convert(),
+                    prf = kCCPRFHmacAlgSHA256.convert(),
+                    rounds = ITERATIONS,
+                    derivedKey = keyPinned.addressOf(0).reinterpret(),
+                    derivedKeyLen = derivedKey.size.convert(),
+                )
             }
         }
         return derivedKey
