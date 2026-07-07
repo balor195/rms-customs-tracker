@@ -23,7 +23,7 @@
 | 9 | Backend API + Offline Sync | — |
 | 10 | Admin, Polish & Packaging | — |
 | 11 | Workflow, Roles & Field Overhaul | ✅ Done — see [dated entry](#workflow-roles--field-overhaul-2026-07-05) below |
-| 12 | iOS Support (Kotlin/Compose Multiplatform) | 🔵 In progress — Phase 3 of 6 done, see [dated entry](#ios-support-kotlin-compose-multiplatform-2026-07-06) below and `IOS_MULTIPLATFORM_PLAN.md` |
+| 12 | iOS Support (Kotlin/Compose Multiplatform) | 🔵 In progress — Phase 4a of 6 done, see [dated entry](#ios-support-kotlin-compose-multiplatform-2026-07-06) below and `IOS_MULTIPLATFORM_PLAN.md` |
 
 ---
 
@@ -606,6 +606,10 @@ Full plan and phase-by-phase roadmap: **`IOS_MULTIPLATFORM_PLAN.md`** (project r
 
 Verified end-to-end on CI: built Info.plist has the key, console/crash logs are clean, screenshot shows the placeholder UI in place — confirming the persistence layer actually builds and runs on Kotlin/Native, not just Android. One minor unconfirmed observation: this run's screenshot text rendered at unusually low contrast (different simulator model than prior runs) — not a functional issue, flagged in `IOS_MULTIPLATFORM_PLAN.md` for a look before Phase 5.
 
-**Remaining (Phases 4-6, not started):** expect/actual for secure storage, background sync, notifications, camera/document capture, PDF export, and password hashing; UI migration to `commonMain`; iOS polish & release. See `IOS_MULTIPLATFORM_PLAN.md` for the full breakdown.
+**Phase 4 of 6 in progress** — platform abstractions via expect/actual, split into sequenced sub-phases 4a-4f (see `IOS_MULTIPLATFORM_PLAN.md` for the full table).
+
+**Phase 4a done (2026-07-07)** — password hashing: `PasswordHasher` moved to `commonMain` as an `expect object`. Android actual keeps `javax.crypto` PBKDF2 unchanged (every existing stored hash stays valid); iOS actual uses Apple's CommonCrypto with matching parameters, so both platforms produce byte-identical output for the same input (PBKDF2 is a deterministic standard). Took five CI round-trips to get the CommonCrypto interop right — worth reading in full in `IOS_MULTIPLATFORM_PLAN.md`, but the short version: two early guesses (cinterop commonization, then per-target source set duplication) were both wrong turns chasing a red herring; the real bugs were a missing `package` line in the custom cinterop def, and then discovering CommonCrypto **already ships as one of Kotlin/Native's own bundled platform libraries** (`platform.CoreCrypto`, not `platform.CommonCrypto`) — no custom cinterop was ever needed. Verified for real this time: a new `:app:iosSimulatorArm64Test` CI step actually executes the shared test suite on the iOS Simulator (not just compiles it), and all 4 tests passed, including an independent Python-computed known-vector check.
+
+**Remaining (Phase 4b-4f, then Phases 5-6):** expect/actual for secure storage/Keychain, background sync, notifications, camera/document capture, PDF export; UI migration to `commonMain`; iOS polish & release. See `IOS_MULTIPLATFORM_PLAN.md` for the full breakdown.
 
 **Remaining (Phases 2-6, not started):** Hilt→Koin + Retrofit→Ktor + UUID→String domain migration; Room→Room-KMP; expect/actual for secure storage, background sync, notifications, camera/document capture, PDF export, and password hashing; UI migration to `commonMain`; iOS polish & release. See `IOS_MULTIPLATFORM_PLAN.md` for the full breakdown — each phase needs its own plan/review before starting, the same way Phase 1 did.
