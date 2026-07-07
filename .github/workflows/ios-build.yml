@@ -56,6 +56,13 @@ jobs:
             -derivedDataPath build \
             build
 
+      - name: Dump built Info.plist
+        working-directory: CustomsTracker/iosApp
+        run: |
+          mkdir -p logs
+          APP_PATH=$(find build/Build/Products -name "*.app" -maxdepth 2 | head -n 1)
+          plutil -p "$APP_PATH/Info.plist" > logs/built-info-plist.log 2>&1 || true
+
       - name: Boot simulator and launch app
         working-directory: CustomsTracker/iosApp
         run: |
